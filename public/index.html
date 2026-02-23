@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Vibrant one-page tourism event site with modal carousel details." />
+  <title>Sabangan LGU Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Anton&family=Montserrat:wght@600;700;800;900&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" href="assets/images/tourism-logo.png" type="image/png" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <nav class="top-nav" aria-label="Primary navigation">
+    <div class="container top-nav-shell">
+      <div class="top-nav-brand-wrap">
+        <a href="#introduction" class="top-nav-logo-link" aria-label="Sabangan Tourism Office Home">
+          <img src="assets/images/tourism-logo.png" class="top-nav-logo-image" alt="Sabangan Tourism Office logo" />
+        </a>
+        <div class="top-nav-brand-copy">
+          <span class="top-nav-brand-title">The Official Website</span>
+          <span class="top-nav-brand-subtitle">of the Sabangan Tourism Office</span>
+        </div>
+      </div>
+
+      <div class="top-nav-links-desktop" aria-label="Desktop navigation">
+        <a class="top-nav-link" href="#introduction">Introduction</a>
+        <a class="top-nav-link" href="#trail">Trail</a>
+        <a class="top-nav-link" href="#mandatory-gears">Mandatory Gears</a>
+        <button type="button" class="top-nav-link top-nav-link-cta top-nav-link-btn" aria-label="Register (coming soon)">Register</button>
+      </div>
+
+      <button class="top-nav-toggle" type="button" aria-label="Toggle menu" aria-controls="topNavMobileMenu" aria-expanded="false">
+        <svg class="top-nav-toggle-open" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+        </svg>
+        <svg class="top-nav-toggle-close" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div id="topNavMobileMenu" class="top-nav-mobile" aria-hidden="true">
+      <a class="top-nav-mobile-link" href="#introduction">Introduction</a>
+      <a class="top-nav-mobile-link" href="#trail">Trail</a>
+      <a class="top-nav-mobile-link" href="#mandatory-gears">Mandatory Gears</a>
+      <button type="button" class="top-nav-mobile-link top-nav-mobile-link-cta top-nav-mobile-link-btn" aria-label="Register (coming soon)">Register</button>
+    </div>
+  </nav>
+
+  <header id="introduction" class="hero wild-hero position-relative overflow-hidden section-anchor">
+    <div class="shape shape-one" aria-hidden="true"></div>
+    <div class="shape shape-two" aria-hidden="true"></div>
+    <div class="shape shape-three" aria-hidden="true"></div>
+    <div class="container position-relative wild-shell">
+      <div class="wild-title-wrap">
+        <h1 class="wild-title">GAGAYAM <br /><span class="wild-title-gradient">FESTIVAL</span></h1>
+        <p class="wild-subtitle">Gagayam Trail Run</p>
+      </div>
+
+      <div class="wild-visual-stage" aria-hidden="true">
+        <div class="wild-visual-glow"></div>
+        <div class="wild-visual-card">
+          <video class="wild-visual-image" autoplay muted loop playsinline preload="metadata">
+            <source src="assets/videos/trail.mp4" type="video/mp4" />
+          </video>
+          <div class="wild-visual-scan"></div>
+        </div>
+        <div class="wild-visual-tag">
+          <a href="#trail" class="wild-visual-button" aria-label="See trail map">See Trail Map</a>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <section id="festival-countdown" class="countdown-section" aria-labelledby="countdown-heading">
+    <div class="container countdown-shell">
+      <p class="countdown-kicker mb-2">Sabangan Highland Festival 2026</p>
+      <h2 id="countdown-heading" class="countdown-heading mb-4">Countdown to Opening Day</h2>
+
+      <div class="countdown-track" data-countdown data-target-date="2026-04-25T04:30:00+08:00" aria-live="polite">
+        <div class="countdown-unit">
+          <div class="countdown-value-wrap">
+            <span class="countdown-hover-glow" aria-hidden="true"></span>
+            <span class="countdown-value" data-countdown-value="days">00</span>
+          </div>
+          <span class="countdown-label">Days</span>
+        </div>
+
+        <span class="countdown-separator" aria-hidden="true">:</span>
+
+        <div class="countdown-unit">
+          <div class="countdown-value-wrap">
+            <span class="countdown-hover-glow" aria-hidden="true"></span>
+            <span class="countdown-value" data-countdown-value="hours">00</span>
+          </div>
+          <span class="countdown-label">Hrs</span>
+        </div>
+
+        <span class="countdown-separator" aria-hidden="true">:</span>
+
+        <div class="countdown-unit">
+          <div class="countdown-value-wrap">
+            <span class="countdown-hover-glow" aria-hidden="true"></span>
+            <span class="countdown-value" data-countdown-value="minutes">00</span>
+          </div>
+          <span class="countdown-label">Mins</span>
+        </div>
+
+        <span class="countdown-separator" aria-hidden="true">:</span>
+
+        <div class="countdown-unit">
+          <div class="countdown-value-wrap">
+            <span class="countdown-hover-glow" aria-hidden="true"></span>
+            <span class="countdown-value" data-countdown-value="seconds">00</span>
+          </div>
+          <span class="countdown-label">Secs</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="py-5">
+    <section id="festival-introduction" class="introduction-section section-anchor" aria-labelledby="festival-introduction-heading">
+      <div class="container introduction-shell">
+        <div class="row g-4 align-items-stretch">
+          <div class="col-lg-5">
+              <div class="introduction-image-card h-100">
+              <img src="assets/images/intro-img.jpg" class="introduction-image w-100 h-100 d-none d-md-block" alt="Trail runners on a mountain path during festival season" />
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <article class="introduction-message-card h-100">
+              <div class="introduction-copy">
+                <p class="introduction-kicker mb-2">Festival Introduction</p>
+                <h2 id="festival-introduction-heading" class="introduction-heading mb-3">
+                  <span class="introduction-heading-lead">Welcome to the</span>
+                  <span class="introduction-heading-brand">GAGAYAM FESTIVAL</span>
+                </h2>
+                <p class="mb-3">Gagayam Festival celebrates Sabangan's mountain culture through outdoor adventure, local artistry, and community gatherings that bring visitors and residents together.</p>
+                <p class="mb-0">From scenic trail routes to cultural showcases, every activity highlights the highland spirit and invites everyone to experience the beauty of Sabangan.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trail-gallery-section trail-experience-section section-anchor" id="trail-gallery" aria-labelledby="trail-gallery-heading">
+      <div class="container trail-gallery-shell trail-experience-shell">
+        <div class="trail-gallery-card">
+          <div class="trail-gallery-head d-flex flex-wrap align-items-end justify-content-between gap-3">
+            <div>
+              <p class="trail-gallery-kicker mb-2">Trail Showcase</p>
+              <h2 id="trail-gallery-heading" class="trail-gallery-title mb-0">Gallery Carousel</h2>
+            </div>
+            <button type="button" class="btn trail-gallery-view-btn" data-bs-toggle="modal" data-bs-target="#trailGalleryModal" aria-controls="trailGalleryModal">
+              View Gallery
+            </button>
+          </div>
+
+          <div id="trailGalleryCarousel" class="carousel slide trail-gallery-carousel" data-bs-ride="carousel" data-bs-interval="3200" data-bs-touch="true" data-bs-pause="false" aria-label="Trail gallery slideshow">
+            <div class="carousel-indicators">
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Trail image 1"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="1" aria-label="Trail image 2"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="2" aria-label="Trail image 3"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="3" aria-label="Trail image 4"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="4" aria-label="Trail image 5"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="5" aria-label="Trail image 6"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="6" aria-label="Trail image 7"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="7" aria-label="Trail image 8"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="8" aria-label="Trail image 9"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="9" aria-label="Trail image 10"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="10" aria-label="Trail image 11"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="11" aria-label="Trail image 12"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="12" aria-label="Trail image 13"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="13" aria-label="Trail image 14"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="14" aria-label="Trail image 15"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="15" aria-label="Trail image 16"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="16" aria-label="Trail image 17"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="17" aria-label="Trail image 18"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="18" aria-label="Trail image 19"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="19" aria-label="Trail image 20"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="20" aria-label="Trail image 21"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="21" aria-label="Trail image 22"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="22" aria-label="Trail image 23"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="23" aria-label="Trail image 24"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="24" aria-label="Trail image 25"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="25" aria-label="Trail image 26"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="26" aria-label="Trail image 27"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="27" aria-label="Trail image 28"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="28" aria-label="Trail image 29"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="29" aria-label="Trail image 30"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="30" aria-label="Trail image 31"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="31" aria-label="Trail image 32"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="32" aria-label="Trail image 33"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="33" aria-label="Trail image 34"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="34" aria-label="Trail image 35"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="35" aria-label="Trail image 36"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="36" aria-label="Trail image 37"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="37" aria-label="Trail image 38"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="38" aria-label="Trail image 39"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="39" aria-label="Trail image 40"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="40" aria-label="Trail image 41"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="41" aria-label="Trail image 42"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="42" aria-label="Trail image 43"></button>
+              <button type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide-to="43" aria-label="Trail image 44"></button>
+            </div>
+
+            <div class="carousel-inner rounded-4">
+              <div class="carousel-item active">
+                <img src="assets/images/trails/IMG_20260207_075016.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 1" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_075343.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 2" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_075346.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 3" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_075529.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 4" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_075533.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 5" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_075944.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 6" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_080007.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 7" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_081243.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 8" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_081246.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 9" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_082135.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 10" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_082402.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 11" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_082533.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 12" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_082707.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 13" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_082710.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 14" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_082904.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 15" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_083330.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 16" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_083921.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 17" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_084146.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 18" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_085316.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 19" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_085323.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 20" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_090245.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 21" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_093634.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 22" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_093955.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 23" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_094314.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 24" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_094316.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 25" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_095002.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 26" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_100907.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 27" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_100914.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 28" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_101005.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 29" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_101318.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 30" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_102032.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 31" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_102035.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 32" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_104133.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 33" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_104710.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 34" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_104714.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 35" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_105652.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 36" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_105938.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 37" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_110526.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 38" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_111932.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 39" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_115546.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 40" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_121129.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 41" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_121756.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 42" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_121807.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 43" />
+              </div>
+              <div class="carousel-item">
+                <img src="assets/images/trails/IMG_20260207_122134.jpg" class="d-block w-100 trail-gallery-image" alt="Trail gallery photo 44" />
+              </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide="prev" aria-label="Previous gallery image">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#trailGalleryCarousel" data-bs-slide="next" aria-label="Next gallery image">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <div class="event-tile trail-map-card trail-map-card-embedded mx-auto section-anchor" id="trail" aria-labelledby="trail-map-heading">
+          <div class="trail-map-copy p-4 p-lg-5 pb-3">
+            <p class="trail-map-kicker mb-2">Route Preview</p>
+            <h2 id="trail-map-heading" class="trail-map-title mb-2">Gagayam Trail Run Map</h2>
+            <p class="trail-map-desc mb-3">Interactive route loaded from the official Gagayam Trail Run JSON coordinates.</p>
+            <p class="trail-map-status mb-3" data-trail-map-status aria-live="polite" data-state="idle">Map preview is ready. Click the button to load the interactive route.</p>
+            <div class="trail-map-stats" aria-label="Trail map summary">
+              <span class="trail-map-stat">Distance: <strong data-trail-distance>--</strong> km</span>
+              <span class="trail-map-stat">Points: <strong data-trail-point-count>--</strong></span>
+            </div>
+            <div class="trail-map-preview-wrap mt-3">
+              <button
+                type="button"
+                class="trail-map-preview-btn"
+                data-trail-map-toggle
+                data-bs-toggle="modal"
+                data-bs-target="#trailMapModal"
+                aria-controls="trailMapModal"
+                aria-expanded="false"
+              >
+                View Interactive Map
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="container mt-5 section-anchor" id="mandatory-gears" aria-labelledby="mandatory-gears-heading">
+      <div class="event-tile mandatory-gears-shell mx-auto">
+        <h2 id="mandatory-gears-heading" class="visually-hidden">Mandatory Gears</h2>
+        <div class="mandatory-gears-grid" role="list" aria-label="Mandatory gears">
+          <div class="mandatory-gear-logo" role="listitem">
+            <img src="assets/icons/mandatory-gears/hydration-bottle.svg" class="mandatory-gear-logo-image" alt="Hydration bottle or hydration pack" />
+          </div>
+          <div class="mandatory-gear-logo" role="listitem">
+            <img src="assets/icons/mandatory-gears/trail-shoe.svg" class="mandatory-gear-logo-image" alt="Trail running shoes with reliable grip" />
+          </div>
+          <div class="mandatory-gear-logo" role="listitem">
+            <img src="assets/icons/mandatory-gears/rain-jacket.svg" class="mandatory-gear-logo-image" alt="Light rain jacket or windproof outer layer" />
+          </div>
+          <div class="mandatory-gear-logo" role="listitem">
+            <img src="assets/icons/mandatory-gears/first-aid-kit.svg" class="mandatory-gear-logo-image" alt="Emergency whistle and basic first-aid kit" />
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal fade trail-gallery-modal" id="trailGalleryModal" tabindex="-1" aria-labelledby="trailGalleryModalLabel" aria-describedby="trailGalleryModalDesc" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h2 class="modal-title fs-4" id="trailGalleryModalLabel">Trail Gallery</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="trailGalleryModalDesc" class="trail-gallery-modal-copy">Tap any image to jump to that photo in the carousel.</p>
+          <div id="trailGalleryGrid" class="trail-gallery-grid" role="list" aria-label="Trail gallery images"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade trail-map-modal" id="trailMapModal" tabindex="-1" aria-labelledby="trailMapModalLabel" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h2 class="modal-title fs-4" id="trailMapModalLabel">Gagayam Trail Run Map</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div id="trail-map-canvas" class="trail-map-canvas" role="img" aria-label="Map showing the Gagayam Trail Run course" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="py-4 border-top">
+    <div class="container d-flex flex-column flex-md-row justify-content-between gap-2">
+      <p class="mb-0">Sunburst City Events</p>
+      <p class="mb-0 text-secondary">Contact: hello@sunburstcity.example</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="js/trail-route-data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
