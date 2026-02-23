@@ -1,5 +1,7 @@
 # Sabangan Tourism Site (Next.js)
 
+A Next.js-based web app designed for trail run registration for the upcoming GAGAYAM Festival in Sabangan.
+
 ## Run locally
 1. Install dependencies: `pnpm install`
 2. Start dev server: `pnpm dev`
