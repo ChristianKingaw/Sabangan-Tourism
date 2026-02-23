@@ -11,7 +11,7 @@
 ## Introduction
 
 <p align="center">
-  <img src="public/assets/images/intro-img.jpg" alt="Introduction preview of the Gagayam Festival website" width="900" />
+  <img src="assets/images/Screenshot%202026-02-23%20163106.png" alt="Introduction screenshot of the Gagayam Festival website" width="100%" />
 </p>
 
 This repository contains the official Sabangan tourism microsite and an interactive map app for the Gagayam Festival trail run. It combines a static promotional page (`public/index.html`) with a Next.js application that renders a Leaflet map and loads KML trail data for route visualization.
