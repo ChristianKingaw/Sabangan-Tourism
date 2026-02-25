@@ -1,10 +1,6 @@
 # Gagayam Festival Tourism Site
 
 <p align="center">
-  <img src="public/assets/images/background.jpg" alt="Gagayam Festival visual banner" width="100%" />
-</p>
-
-<p align="center">
   Official Sabangan Tourism Office website for the Gagayam Trail Run experience.
 </p>
 
