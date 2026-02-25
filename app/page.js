@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Script from "next/script";
 import GagayamTrailLeafletMount from "../components/GagayamTrailLeafletMount";
+import RegistrationForm from "../components/RegistrationForm";
 
 const sourceHtmlPath = path.join(process.cwd(), "public", "index.html");
 const sourceHtml = fs.readFileSync(sourceHtmlPath, "utf8");
@@ -13,6 +14,7 @@ export default function HomePage() {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: legacyBodyHtml }} suppressHydrationWarning />
+      <RegistrationForm />
       <GagayamTrailLeafletMount />
       <Script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"

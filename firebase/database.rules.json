@@ -1,0 +1,34 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "events": {
+      ".read": true,
+      "$eventId": {
+        ".write": "((auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')) || (!data.exists() && newData.hasChildren(['id', 'description']) && newData.child('id').val() === $eventId))",
+        ".validate": "newData.hasChildren(['id', 'description']) && newData.child('id').isString() && newData.child('description').isString()"
+      }
+    },
+    "clients": {
+      ".read": "auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')",
+      "$clientId": {
+        ".write": "((!data.exists() && newData.exists() && newData.child('review_status').val() === 'pending') || (auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')))",
+        ".validate": "((auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')) || (newData.hasChildren(['id', 'email', 'fname', 'lname', 'dob', 'gender', 'nationality', 'address', 'city_prov', 'contact_no', 'health_condition', 'category', 'shirt_size', 'emergency_full_name', 'emergency_contact_no', 'privacy_consent', 'review_status', 'event_id']) && newData.child('id').val() === $clientId && newData.child('event_id').val() === 'gagayam-trail-run-15km' && newData.child('category').val() === '15km' && (newData.child('health_condition').val() === 'Yes' || newData.child('health_condition').val() === 'No') && (newData.child('review_status').val() === 'pending' || newData.child('review_status').val() === 'accepted' || newData.child('review_status').val() === 'rejected') && newData.child('privacy_consent').val() === true && newData.child('email').isString() && newData.child('fname').isString() && newData.child('lname').isString()))"
+      }
+    },
+    "public_clients": {
+      ".read": true,
+      "$clientId": {
+        ".write": "auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')",
+        ".validate": "newData.hasChildren(['id', 'full_name', 'category', 'city_prov', 'event_id', 'created_at']) && newData.child('id').val() === $clientId && newData.child('event_id').val() === 'gagayam-trail-run-15km' && newData.child('category').val() === '15km' && newData.child('full_name').isString() && newData.child('city_prov').isString()"
+      }
+    },
+    "payments": {
+      ".read": "auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')",
+      "$paymentId": {
+        ".write": "((!data.exists() && newData.exists()) || (auth != null && (auth.token.admin === true || auth.token.email === 'sabanganlgu@gmail.com')))",
+        ".validate": "newData.hasChildren(['id', 'client_id', 'payment_method', 'amount', 'proof_of_payment']) && newData.child('id').val() === $paymentId && newData.child('payment_method').val() === 'GCash' && newData.child('amount').isNumber() && newData.child('proof_of_payment').isString()"
+      }
+    }
+  }
+}

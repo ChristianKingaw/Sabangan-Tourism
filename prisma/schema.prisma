@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  description String
+  clients     Client[]
+
+  @@map("event")
+}
+
+model Client {
+  id                 Int       @id @default(autoincrement())
+  email              String
+  fname              String
+  mname              String?
+  lname              String
+  dob                DateTime
+  gender             String
+  nationality        String
+  address            String
+  cityProv           String    @map("city_prov")
+  contactNo          String    @map("contact_no")
+  category           String
+  shirtSize          String    @map("shirt_size")
+  emergencyFullName  String    @map("emergency_full_name")
+  emergencyContactNo String    @map("emergency_contact_no")
+  eventId            Int       @map("event_id")
+  event              Event     @relation(fields: [eventId], references: [id])
+  payments           Payment[]
+
+  @@map("client")
+}
+
+model Payment {
+  id             Int    @id @default(autoincrement())
+  clientId       Int    @map("client_id")
+  paymentMethod  String @map("payment_method")
+  gcashNumber    String? @map("gcash_number")
+  amount         Float
+  proofOfPayment String @map("proof_of_payment")
+  client         Client @relation(fields: [clientId], references: [id])
+
+  @@map("payment")
+}

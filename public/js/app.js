@@ -84,50 +84,71 @@
 
   if (countdownEls.length) {
     const pad = (value) => String(value).padStart(2, '0');
+    const getServerTimeOffset = async () => {
+      try {
+        const response = await fetch('/api/current-time', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
-    countdownEls.forEach((countdownEl) => {
-      const daysEl = countdownEl.querySelector('[data-countdown-value="days"]');
-      const hoursEl = countdownEl.querySelector('[data-countdown-value="hours"]');
-      const minutesEl = countdownEl.querySelector('[data-countdown-value="minutes"]');
-      const secondsEl = countdownEl.querySelector('[data-countdown-value="seconds"]');
-      const countdownTarget = countdownEl.getAttribute('data-target-date');
-      const targetTime = countdownTarget ? new Date(countdownTarget).getTime() : NaN;
+        const payload = await response.json();
+        const serverNow = Number(payload && payload.now);
+        if (!Number.isFinite(serverNow)) {
+          throw new Error('Invalid server time payload');
+        }
 
-      if (!daysEl || !hoursEl || !minutesEl || !secondsEl || !Number.isFinite(targetTime)) {
-        return;
+        return serverNow - Date.now();
+      } catch {
+        return 0;
       }
+    };
 
-      let countdownIntervalId = null;
+    getServerTimeOffset().then((serverOffsetMs) => {
+      countdownEls.forEach((countdownEl) => {
+        const daysEl = countdownEl.querySelector('[data-countdown-value="days"]');
+        const hoursEl = countdownEl.querySelector('[data-countdown-value="hours"]');
+        const minutesEl = countdownEl.querySelector('[data-countdown-value="minutes"]');
+        const secondsEl = countdownEl.querySelector('[data-countdown-value="seconds"]');
+        const countdownTarget = countdownEl.getAttribute('data-target-date');
+        const targetTime = countdownTarget ? new Date(countdownTarget).getTime() : NaN;
 
-      const renderCountdown = () => {
-        const remainingTime = targetTime - Date.now();
-
-        if (remainingTime <= 0) {
-          daysEl.textContent = '00';
-          hoursEl.textContent = '00';
-          minutesEl.textContent = '00';
-          secondsEl.textContent = '00';
-          countdownEl.setAttribute('data-countdown-ended', 'true');
-
-          if (countdownIntervalId) {
-            clearInterval(countdownIntervalId);
-          }
+        if (!daysEl || !hoursEl || !minutesEl || !secondsEl || !Number.isFinite(targetTime)) {
           return;
         }
 
-        const days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+        let countdownIntervalId = null;
 
-        daysEl.textContent = days < 10 ? `0${days}` : String(days);
-        hoursEl.textContent = pad(hours);
-        minutesEl.textContent = pad(minutes);
-        secondsEl.textContent = pad(seconds);
-      };
+        const renderCountdown = () => {
+          const trustedNow = Date.now() + serverOffsetMs;
+          const remainingTime = targetTime - trustedNow;
 
-      renderCountdown();
-      countdownIntervalId = window.setInterval(renderCountdown, 1000);
+          if (remainingTime <= 0) {
+            daysEl.textContent = '00';
+            hoursEl.textContent = '00';
+            minutesEl.textContent = '00';
+            secondsEl.textContent = '00';
+            countdownEl.setAttribute('data-countdown-ended', 'true');
+
+            if (countdownIntervalId) {
+              clearInterval(countdownIntervalId);
+            }
+            return;
+          }
+
+          const days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+
+          daysEl.textContent = days < 10 ? `0${days}` : String(days);
+          hoursEl.textContent = pad(hours);
+          minutesEl.textContent = pad(minutes);
+          secondsEl.textContent = pad(seconds);
+        };
+
+        renderCountdown();
+        countdownIntervalId = window.setInterval(renderCountdown, 1000);
+      });
     });
   }
 
@@ -221,10 +242,135 @@
     trailGalleryGridEl.replaceChildren(galleryFragment);
   }
 
+  const registeredClientsModalEl = document.querySelector('#registeredClientsModal');
+  const registeredClientsBodyEl = document.querySelector('#registeredClientsBody');
+  const registeredClientsStatusEl = document.querySelector('[data-registered-clients-status]');
+  const registeredClientsRefreshEls = document.querySelectorAll('[data-registered-clients-refresh]');
+  let isLoadingRegisteredClients = false;
+
+  const formatRegisteredDate = (value) => {
+    const parsed = value ? new Date(value) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return '-';
+    }
+
+    return parsed.toLocaleString();
+  };
+
+  const escapeHtml = (value) =>
+    String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
+  const setRegisteredClientsStatus = (message, state) => {
+    if (!registeredClientsStatusEl) {
+      return;
+    }
+
+    registeredClientsStatusEl.textContent = message;
+    if (state) {
+      registeredClientsStatusEl.setAttribute('data-state', state);
+    } else {
+      registeredClientsStatusEl.removeAttribute('data-state');
+    }
+  };
+
+  const setRegisteredClientsLoading = (loading) => {
+    registeredClientsRefreshEls.forEach((buttonEl) => {
+      buttonEl.disabled = loading;
+      buttonEl.textContent = loading ? 'Loading...' : 'Refresh';
+    });
+  };
+
+  const renderRegisteredClients = (clients) => {
+    if (!registeredClientsBodyEl) {
+      return;
+    }
+
+    if (!Array.isArray(clients) || !clients.length) {
+      registeredClientsBodyEl.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">No registered clients yet.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    registeredClientsBodyEl.innerHTML = clients
+      .map((client, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(client.full_name || '-')}</td>
+          <td>${escapeHtml(client.category || '-')}</td>
+          <td>${escapeHtml(client.city_prov || '-')}</td>
+          <td>${escapeHtml(client.review_status || 'accepted')}</td>
+          <td>${escapeHtml(formatRegisteredDate(client.created_at))}</td>
+        </tr>
+      `)
+      .join('');
+  };
+
+  const loadRegisteredClients = async () => {
+    if (!registeredClientsBodyEl || isLoadingRegisteredClients) {
+      return;
+    }
+
+    isLoadingRegisteredClients = true;
+    setRegisteredClientsLoading(true);
+    setRegisteredClientsStatus('Loading registered clients...', 'loading');
+    registeredClientsBodyEl.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-4 text-muted">Loading...</td>
+      </tr>
+    `;
+
+    try {
+      const response = await fetch('/api/registered-clients', { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || 'Failed to load registered clients.');
+      }
+
+      renderRegisteredClients(payload.clients);
+      setRegisteredClientsStatus(`Showing ${payload.count || 0} registered client(s).`, 'ready');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load registered clients.';
+      registeredClientsBodyEl.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center py-4 text-danger">${message}</td>
+        </tr>
+      `;
+      setRegisteredClientsStatus('Could not load registered clients right now.', 'error');
+    } finally {
+      isLoadingRegisteredClients = false;
+      setRegisteredClientsLoading(false);
+    }
+  };
+
+  if (registeredClientsModalEl) {
+    registeredClientsModalEl.addEventListener('show.bs.modal', () => {
+      loadRegisteredClients();
+    });
+  }
+
+  registeredClientsRefreshEls.forEach((buttonEl) => {
+    buttonEl.addEventListener('click', () => {
+      loadRegisteredClients();
+    });
+  });
+
   const trailMapEl = document.querySelector('#trail-map-canvas');
   const trailMapStatusEl = document.querySelector('[data-trail-map-status]');
   const trailDistanceEl = document.querySelector('[data-trail-distance]');
-  const trailPointCountEl = document.querySelector('[data-trail-point-count]');
+  if (trailDistanceEl) {
+    trailDistanceEl.textContent = '15';
+    if (trailDistanceEl.parentElement) {
+      trailDistanceEl.parentElement.style.display = '';
+    }
+  }
 
   const setTrailMapStatus = (message, state) => {
     if (!trailMapStatusEl) {

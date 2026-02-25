@@ -1,0 +1,14 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /proof-of-payment/{allPaths=**} {
+      allow read, write: if request.auth != null
+        && (request.auth.token.admin == true || request.auth.token.email == "sabanganlgu@gmail.com");
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -5,3 +5,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.env
+.env.local
+.env.*.local
+firebase/*-firebase-adminsdk-*.json
+.firebase/
+.vscode/
+_tmp_prisma7_init/
+admin_cookies.txt
+dev.db
+firebase-debug.log
+public/uploads/

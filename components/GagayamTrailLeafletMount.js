@@ -196,7 +196,6 @@ export default function GagayamTrailLeafletMount() {
     const trailMapEl = document.querySelector("#trail-map-canvas");
     const trailMapStatusEl = document.querySelector("[data-trail-map-status]");
     const trailDistanceEl = document.querySelector("[data-trail-distance]");
-    const trailPointCountEl = document.querySelector("[data-trail-point-count]");
     const trailMapToggleEl = document.querySelector("[data-trail-map-toggle]");
     const trailMapModalEl = document.querySelector("#trailMapModal");
 
@@ -272,7 +271,8 @@ export default function GagayamTrailLeafletMount() {
       if (!trailMapToggleEl) {
         return;
       }
-      trailMapToggleEl.textContent = text;
+      // Always keep the button text as 'view interactive map'
+      trailMapToggleEl.textContent = 'view interactive map';
       trailMapToggleEl.disabled = disabled;
       trailMapToggleEl.classList.toggle("is-loading", loading);
       trailMapToggleEl.classList.toggle("is-loaded", loaded);
@@ -373,17 +373,16 @@ export default function GagayamTrailLeafletMount() {
       }
 
       if (trailDistanceEl) {
-        trailDistanceEl.textContent = (distanceMeters / 1000).toFixed(2);
-      }
-
-      if (trailPointCountEl) {
-        trailPointCountEl.textContent = pointCount.toLocaleString();
+        trailDistanceEl.textContent = '15';
+        if (trailDistanceEl.parentElement) {
+          trailDistanceEl.parentElement.style.display = '';
+        }
       }
 
       setTrailMapStatus("Route loaded successfully.", "ready");
       isMapLoaded = true;
       isMapLoading = false;
-      setToggleState({ text: "Map Loaded", loaded: true });
+      setToggleState({ text: "view interactive map", loaded: true });
       window.addEventListener("resize", handleViewportResize, { passive: true });
       window.requestAnimationFrame(() => {
         syncTrailViewport();

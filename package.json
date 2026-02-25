@@ -5,17 +5,31 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "deploy": "npm run deploy:hosting:no-admin",
+    "deploy:hosting:no-admin": "node scripts/deploy-hosting-no-admin.js",
+    "db:push": "node scripts/push-db-schema.js",
+    "db:studio": "prisma studio"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
+    "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
+    "@jobuntux/psgc": "^0.2.1",
+    "@prisma/client": "^7.4.1",
+    "better-sqlite3": "^12.6.2",
+    "firebase-admin": "^13.6.1",
     "leaflet": "^1.9.4",
     "leaflet-omnivore": "^0.3.4",
-    "next": "^16.1.6",
+    "next": "^15.5.12",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "use-postal-ph": "^1.1.13"
+  },
+  "devDependencies": {
+    "dotenv": "^17.3.1",
+    "prisma": "^7.4.1"
   }
 }
