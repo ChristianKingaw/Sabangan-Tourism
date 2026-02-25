@@ -67,3 +67,8 @@ pnpm start
 ## License
 
 See `LICENSE`.
+
+
+## Issues
+
+Grabeng rush to diko na ma enjoy, 1 week lang tinapos 😒😒😒😒😒
