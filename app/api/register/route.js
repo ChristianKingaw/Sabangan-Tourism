@@ -10,6 +10,13 @@ const FIXED_CATEGORY = "15km";
 const FIXED_PAYMENT_METHOD = "GCash";
 const FIXED_AMOUNT = Number(process.env.FIXED_REGISTRATION_AMOUNT || "0");
 const EVENT_ID = "gagayam-trail-run-15km";
+const MAX_PROOF_FILE_BYTES = Number(process.env.MAX_PAYMENT_UPLOAD_BYTES || `${6 * 1024 * 1024}`);
+const ALLOWED_PROOF_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf"
+]);
 
 const textFieldNames = [
   "email",
@@ -85,6 +92,39 @@ function sanitizeFilename(value) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
 
+function getExtensionForContentType(contentType) {
+  if (contentType === "image/jpeg") {
+    return "jpg";
+  }
+  if (contentType === "image/png") {
+    return "png";
+  }
+  if (contentType === "image/webp") {
+    return "webp";
+  }
+  if (contentType === "application/pdf") {
+    return "pdf";
+  }
+  return "bin";
+}
+
+function inferContentTypeFromFilename(filename) {
+  const value = String(filename || "").toLowerCase();
+  if (value.endsWith(".jpg") || value.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (value.endsWith(".png")) {
+    return "image/png";
+  }
+  if (value.endsWith(".webp")) {
+    return "image/webp";
+  }
+  if (value.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+  return "";
+}
+
 function parseProofFile(formData) {
   const fileValue = formData.get("proof_of_payment_file");
   if (!fileValue || typeof fileValue === "string" || !("arrayBuffer" in fileValue)) {
@@ -95,15 +135,33 @@ function parseProofFile(formData) {
     throw new Error("Upload proof_of_payment file.");
   }
 
+  if (!Number.isFinite(MAX_PROOF_FILE_BYTES) || MAX_PROOF_FILE_BYTES <= 0) {
+    throw new Error("MAX_PAYMENT_UPLOAD_BYTES must be a valid positive number.");
+  }
+
   const parsedName = path.parse(fileValue.name || "proof");
+  let contentType = String(fileValue.type || "").toLowerCase();
+  if (!contentType) {
+    contentType = inferContentTypeFromFilename(parsedName.base);
+  }
+  if (!ALLOWED_PROOF_CONTENT_TYPES.has(contentType)) {
+    throw new Error("Invalid proof_of_payment file type. Allowed: JPG, PNG, WEBP, PDF.");
+  }
+
+  if (fileValue.size > MAX_PROOF_FILE_BYTES) {
+    const maxMb = (MAX_PROOF_FILE_BYTES / (1024 * 1024)).toFixed(2);
+    throw new Error(`proof_of_payment_file exceeds max size (${maxMb} MB).`);
+  }
+
   const safeBase = sanitizeFilename(parsedName.name || "proof") || "proof";
-  const safeExt = sanitizeFilename((parsedName.ext || ".bin").replace(".", "")) || "bin";
+  const safeExt = sanitizeFilename((parsedName.ext || `.${getExtensionForContentType(contentType)}`).replace(".", "")) ||
+    getExtensionForContentType(contentType);
   const filename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeBase}.${safeExt}`;
 
   return {
     fileValue,
     filename,
-    contentType: fileValue.type || "application/octet-stream"
+    contentType
   };
 }
 

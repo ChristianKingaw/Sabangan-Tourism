@@ -4,10 +4,12 @@
   "description": "Tourism website with Next.js integration.",
   "scripts": {
     "dev": "next dev",
+    "media:optimize": "node scripts/optimize-media.js",
+    "prebuild": "npm run media:optimize",
     "build": "next build",
     "start": "next start",
     "deploy": "npm run deploy:hosting:no-admin",
-    "deploy:hosting:no-admin": "node scripts/deploy-hosting-no-admin.js",
+    "deploy:hosting:no-admin": "npm run media:optimize && node scripts/deploy-hosting-no-admin.js",
     "db:push": "node scripts/push-db-schema.js",
     "db:studio": "prisma studio"
   },
@@ -30,6 +32,8 @@
   },
   "devDependencies": {
     "dotenv": "^17.3.1",
-    "prisma": "^7.4.1"
+    "ffmpeg-static": "^5.2.0",
+    "prisma": "^7.4.1",
+    "sharp": "^0.34.4"
   }
 }

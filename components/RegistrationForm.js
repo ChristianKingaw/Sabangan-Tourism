@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { compressPaymentFile, formatBytes, PAYMENT_MAX_FILE_BYTES } from "../lib/clientFileCompression";
 
 const modalId = "registration-form";
 const FIXED_CATEGORY = "15km";
@@ -124,6 +125,13 @@ export default function RegistrationForm() {
   const [isLoadingBarangays, setIsLoadingBarangays] = useState(false);
   const [dobParts, setDobParts] = useState({ month: "", day: "", year: "" });
   const [proofFile, setProofFile] = useState(null);
+  const [proofFileMeta, setProofFileMeta] = useState({
+    name: "",
+    originalSize: 0,
+    finalSize: 0,
+    wasCompressed: false
+  });
+  const [isProcessingProofFile, setIsProcessingProofFile] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [toast, setToast] = useState({ show: false, type: "success", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,7 +144,7 @@ export default function RegistrationForm() {
   const modalRef = useRef(null);
   const formRef = useRef(null);
 
-  const canSubmit = useMemo(() => !isSubmitting, [isSubmitting]);
+  const canSubmit = useMemo(() => !isSubmitting && !isProcessingProofFile, [isProcessingProofFile, isSubmitting]);
   const currentStep = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
   const filteredBarangayOptions = useMemo(() => {
@@ -359,9 +367,44 @@ export default function RegistrationForm() {
     }));
   };
 
-  const handleFileChange = (event) => {
-    const selected = event.target.files && event.target.files[0] ? event.target.files[0] : null;
-    setProofFile(selected);
+  const handleFileChange = async (event) => {
+    const inputElement = event.target;
+    const selected = inputElement.files && inputElement.files[0] ? inputElement.files[0] : null;
+    if (!selected) {
+      setProofFile(null);
+      setProofFileMeta({ name: "", originalSize: 0, finalSize: 0, wasCompressed: false });
+      return;
+    }
+
+    setIsProcessingProofFile(true);
+    setStatus({ type: "", message: "" });
+
+    try {
+      const compressed = await compressPaymentFile(selected);
+      setProofFile(compressed.file);
+      setProofFileMeta({
+        name: compressed.file.name,
+        originalSize: compressed.originalSize,
+        finalSize: compressed.finalSize,
+        wasCompressed: compressed.wasCompressed
+      });
+      setStatus({
+        type: "success",
+        message: compressed.wasCompressed
+          ? `Payment file compressed: ${formatBytes(compressed.originalSize)} -> ${formatBytes(compressed.finalSize)}.`
+          : `Payment file ready: ${formatBytes(compressed.finalSize)}.`
+      });
+    } catch (error) {
+      inputElement.value = "";
+      setProofFile(null);
+      setProofFileMeta({ name: "", originalSize: 0, finalSize: 0, wasCompressed: false });
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "Failed to process payment file."
+      });
+    } finally {
+      setIsProcessingProofFile(false);
+    }
   };
 
   const handleDobPartChange = (part) => (event) => {
@@ -385,6 +428,11 @@ export default function RegistrationForm() {
   }, [toast.show]);
 
   const validateStep = (index) => {
+    if (isProcessingProofFile) {
+      setStatus({ type: "error", message: "Please wait while your payment file is being compressed." });
+      return false;
+    }
+
     const step = steps[index];
     for (const key of step.keys) {
       if (key === "dob_group") {
@@ -497,6 +545,7 @@ export default function RegistrationForm() {
       setBarangayOptions([]);
       setDobParts({ month: "", day: "", year: "" });
       setProofFile(null);
+      setProofFileMeta({ name: "", originalSize: 0, finalSize: 0, wasCompressed: false });
       setAccepted(false);
       setStepIndex(0);
       if (formRef.current) {
@@ -515,6 +564,10 @@ export default function RegistrationForm() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (isProcessingProofFile) {
+      setStatus({ type: "error", message: "Please wait while your payment file is being compressed." });
+      return;
+    }
     if (!validateStep(stepIndex)) {
       return;
     }
@@ -845,10 +898,21 @@ export default function RegistrationForm() {
             id={key}
             name={key}
             type="file"
-            accept=".jpg,.jpeg,.png,.pdf"
+            accept=".jpg,.jpeg,.png,.webp,.pdf"
             className="form-control registration-input"
             onChange={handleFileChange}
+            disabled={isProcessingProofFile || isSubmitting}
           />
+          <small className="registration-upload-hint">
+            Allowed: JPG, PNG, WEBP, PDF. Max {formatBytes(PAYMENT_MAX_FILE_BYTES)} after compression.
+          </small>
+          {proofFileMeta.name ? (
+            <small className="registration-upload-meta">
+              {proofFileMeta.wasCompressed
+                ? `${proofFileMeta.name} (${formatBytes(proofFileMeta.originalSize)} -> ${formatBytes(proofFileMeta.finalSize)})`
+                : `${proofFileMeta.name} (${formatBytes(proofFileMeta.finalSize)})`}
+            </small>
+          ) : null}
         </div>
       );
     }
@@ -986,7 +1050,7 @@ export default function RegistrationForm() {
                       type="button"
                       className="btn registration-close-btn"
                       onClick={handleBack}
-                      disabled={stepIndex === 0 || isSubmitting || privacyConfirm.open}
+                      disabled={stepIndex === 0 || isSubmitting || isProcessingProofFile || privacyConfirm.open}
                     >
                       Back
                     </button>
@@ -996,7 +1060,7 @@ export default function RegistrationForm() {
                         type="button"
                         className="btn registration-next-btn"
                         onClick={handleNext}
-                        disabled={isSubmitting || privacyConfirm.open}
+                        disabled={isSubmitting || isProcessingProofFile || privacyConfirm.open}
                       >
                         Next
                       </button>
@@ -1202,6 +1266,20 @@ export default function RegistrationForm() {
           color: #486b57;
           font-size: 0.74rem;
           font-weight: 600;
+        }
+
+        .registration-upload-hint,
+        .registration-upload-meta {
+          display: block;
+          margin-top: 0.28rem;
+          color: #486b57;
+          font-size: 0.74rem;
+          font-weight: 600;
+          line-height: 1.34;
+        }
+
+        .registration-upload-meta {
+          color: #184d35;
         }
 
         .health-check-options {
