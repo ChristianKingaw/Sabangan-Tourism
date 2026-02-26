@@ -8,6 +8,10 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+# Keep only Firebase rules in repo; ignore all other firebase folder files.
+firebase/*
+!firebase/database.rules.json
+!firebase/storage.rules
 firebase/*-firebase-adminsdk-*.json
 .firebase/
 .vscode/
