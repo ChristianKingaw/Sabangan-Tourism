@@ -681,43 +681,6 @@ export default function RegistrationForm() {
               Scan this QR code in GCash, then upload your proof of payment below.
             </p>
           </div>
-          <div className="registration-inclusions-card">
-            <h4 className="registration-inclusions-title mb-0">Registration Inclusions</h4>
-            <div className="registration-inclusions-table-wrap">
-              <table className="registration-inclusions-table" aria-label="Trail run registration inclusions and fees">
-                <tbody>
-                  <tr>
-                    <th scope="row">Regulatory Fees</th>
-                    <td className="is-included">Included</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Premium Event Shirt</th>
-                    <td className="is-included">Included</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Finisher Medal</th>
-                    <td className="is-included">Included</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Race Bib</th>
-                    <td>Php 200</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Aid Stations</th>
-                    <td>Php 100</td>
-                  </tr>
-                  <tr>
-                    <th scope="row">Snacks</th>
-                    <td className="is-included">Included</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div className="registration-inclusions-total">
-              <span>Total: </span>
-              <strong>Php 1,500</strong>
-            </div>
-          </div>
         </div>
       );
     }
@@ -1361,88 +1324,6 @@ export default function RegistrationForm() {
           color: #174c35;
           font-size: 0.82rem;
           font-weight: 600;
-        }
-
-        .registration-inclusions-card {
-          margin: 0.72rem auto 0;
-          width: 100%;
-          max-width: 560px;
-          background: #ffffff;
-          border: 1px solid #cde4d6;
-          border-radius: 0.75rem;
-          padding: 0.72rem 0.8rem 0.78rem;
-          box-shadow: 0 10px 20px rgba(15, 45, 31, 0.08);
-        }
-
-        .registration-inclusions-title {
-          color: #12402d;
-          font-size: 0.88rem;
-          font-weight: 800;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          margin-bottom: 0.46rem !important;
-        }
-
-        .registration-inclusions-table-wrap {
-          border: 1px solid #dbece1;
-          border-radius: 0.62rem;
-          overflow: hidden;
-          background: #fbfffc;
-        }
-
-        .registration-inclusions-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.82rem;
-          color: #174c35;
-        }
-
-        .registration-inclusions-table tr + tr {
-          border-top: 1px dashed #d7eadd;
-        }
-
-        .registration-inclusions-table th,
-        .registration-inclusions-table td {
-          padding: 0.4rem 0.52rem;
-          vertical-align: middle;
-        }
-
-        .registration-inclusions-table th {
-          font-weight: 700;
-          text-align: left;
-        }
-
-        .registration-inclusions-table td {
-          text-align: right;
-          font-weight: 800;
-          color: #135a3a;
-          white-space: nowrap;
-        }
-
-        .registration-inclusions-table td.is-included {
-          color: #5a7568;
-          font-weight: 700;
-          font-size: 0.78rem;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .registration-inclusions-total {
-          margin-top: 0.48rem;
-          border-radius: 0.62rem;
-          background: linear-gradient(145deg, #f8a53b 0%, #f08a24 60%, #d87411 100%);
-          color: #fff;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.5rem 0.65rem;
-          font-size: 0.85rem;
-          font-weight: 700;
-        }
-
-        .registration-inclusions-total strong {
-          font-size: 0.98rem;
-          letter-spacing: 0.03em;
         }
 
         .registration-close-btn,
