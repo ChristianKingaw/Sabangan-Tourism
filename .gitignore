@@ -20,3 +20,4 @@ admin_cookies.txt
 dev.db
 firebase-debug.log
 public/uploads/
+_ref_bundle.js
