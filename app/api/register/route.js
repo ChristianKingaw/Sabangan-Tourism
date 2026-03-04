@@ -8,9 +8,10 @@ import { withTimeout } from "../../../lib/withTimeout";
 export const runtime = "nodejs";
 const FIXED_CATEGORY = "15km";
 const FIXED_PAYMENT_METHOD = "GCash";
-const FIXED_AMOUNT = Number(process.env.FIXED_REGISTRATION_AMOUNT || "0");
+const FIXED_AMOUNT = Number(process.env.FIXED_REGISTRATION_AMOUNT || "1500");
 const EVENT_ID = "gagayam-trail-run-15km";
 const MAX_PROOF_FILE_BYTES = Number(process.env.MAX_PAYMENT_UPLOAD_BYTES || `${6 * 1024 * 1024}`);
+const MAX_PROOF_FILE_COUNT = Number(process.env.MAX_PAYMENT_UPLOAD_FILES || "5");
 const ALLOWED_PROOF_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -125,44 +126,56 @@ function inferContentTypeFromFilename(filename) {
   return "";
 }
 
-function parseProofFile(formData) {
-  const fileValue = formData.get("proof_of_payment_file");
-  if (!fileValue || typeof fileValue === "string" || !("arrayBuffer" in fileValue)) {
+function isUploadFile(value) {
+  return Boolean(value) && typeof value !== "string" && "arrayBuffer" in value;
+}
+
+function parseProofFiles(formData) {
+  const rawFiles = formData.getAll("proof_of_payment_file");
+  const fileValues = rawFiles.filter(isUploadFile);
+  if (!fileValues.length) {
     throw new Error("Upload proof_of_payment file.");
   }
-
-  if (!fileValue.size) {
-    throw new Error("Upload proof_of_payment file.");
-  }
-
   if (!Number.isFinite(MAX_PROOF_FILE_BYTES) || MAX_PROOF_FILE_BYTES <= 0) {
     throw new Error("MAX_PAYMENT_UPLOAD_BYTES must be a valid positive number.");
   }
-
-  const parsedName = path.parse(fileValue.name || "proof");
-  let contentType = String(fileValue.type || "").toLowerCase();
-  if (!contentType) {
-    contentType = inferContentTypeFromFilename(parsedName.base);
+  if (!Number.isFinite(MAX_PROOF_FILE_COUNT) || MAX_PROOF_FILE_COUNT <= 0) {
+    throw new Error("MAX_PAYMENT_UPLOAD_FILES must be a valid positive number.");
   }
-  if (!ALLOWED_PROOF_CONTENT_TYPES.has(contentType)) {
-    throw new Error("Invalid proof_of_payment file type. Allowed: JPG, PNG, WEBP, PDF.");
+  if (fileValues.length > MAX_PROOF_FILE_COUNT) {
+    throw new Error(`Upload up to ${MAX_PROOF_FILE_COUNT} proof_of_payment files.`);
   }
 
-  if (fileValue.size > MAX_PROOF_FILE_BYTES) {
-    const maxMb = (MAX_PROOF_FILE_BYTES / (1024 * 1024)).toFixed(2);
-    throw new Error(`proof_of_payment_file exceeds max size (${maxMb} MB).`);
-  }
+  return fileValues.map((fileValue) => {
+    if (!fileValue.size) {
+      throw new Error("Upload proof_of_payment file.");
+    }
 
-  const safeBase = sanitizeFilename(parsedName.name || "proof") || "proof";
-  const safeExt = sanitizeFilename((parsedName.ext || `.${getExtensionForContentType(contentType)}`).replace(".", "")) ||
-    getExtensionForContentType(contentType);
-  const filename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeBase}.${safeExt}`;
+    const parsedName = path.parse(fileValue.name || "proof");
+    let contentType = String(fileValue.type || "").toLowerCase();
+    if (!contentType) {
+      contentType = inferContentTypeFromFilename(parsedName.base);
+    }
+    if (!ALLOWED_PROOF_CONTENT_TYPES.has(contentType)) {
+      throw new Error("Invalid proof_of_payment file type. Allowed: JPG, PNG, WEBP, PDF.");
+    }
 
-  return {
-    fileValue,
-    filename,
-    contentType
-  };
+    if (fileValue.size > MAX_PROOF_FILE_BYTES) {
+      const maxMb = (MAX_PROOF_FILE_BYTES / (1024 * 1024)).toFixed(2);
+      throw new Error(`proof_of_payment_file exceeds max size (${maxMb} MB).`);
+    }
+
+    const safeBase = sanitizeFilename(parsedName.name || "proof") || "proof";
+    const safeExt = sanitizeFilename((parsedName.ext || `.${getExtensionForContentType(contentType)}`).replace(".", "")) ||
+      getExtensionForContentType(contentType);
+    const filename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${safeBase}.${safeExt}`;
+
+    return {
+      fileValue,
+      filename,
+      contentType
+    };
+  });
 }
 
 async function saveProofToFirebaseStorage({ fileBuffer, filename, contentType }) {
@@ -248,30 +261,56 @@ function buildProofDataUrl({ fileBuffer, contentType }) {
   return `data:${contentType};base64,${encoded}`;
 }
 
-async function resolveProofOfPayment(formData) {
-  const parsedFile = parseProofFile(formData);
-  const fileBuffer = Buffer.from(await parsedFile.fileValue.arrayBuffer());
+async function resolveProofOfPaymentFiles(formData) {
+  const parsedFiles = parseProofFiles(formData);
+  const resolvedFiles = [];
 
-  if (shouldUseFirebaseStorage()) {
-    try {
-      return await saveProofToFirebaseStorage({
-        fileBuffer,
-        filename: parsedFile.filename,
-        contentType: parsedFile.contentType
-      });
-    } catch {
-      // Keep registrations moving even when cloud uploads are transiently unavailable.
-      return buildProofDataUrl({
-        fileBuffer,
-        contentType: parsedFile.contentType
-      });
+  for (const parsedFile of parsedFiles) {
+    // Process uploads sequentially to keep memory/network pressure predictable.
+    // eslint-disable-next-line no-await-in-loop
+    const fileBuffer = Buffer.from(await parsedFile.fileValue.arrayBuffer());
+
+    if (shouldUseFirebaseStorage()) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const proofUrl = await saveProofToFirebaseStorage({
+          fileBuffer,
+          filename: parsedFile.filename,
+          contentType: parsedFile.contentType
+        });
+        resolvedFiles.push(proofUrl);
+        continue;
+      } catch {
+        // Keep registrations moving even when cloud uploads are transiently unavailable.
+        resolvedFiles.push(
+          buildProofDataUrl({
+            fileBuffer,
+            contentType: parsedFile.contentType
+          })
+        );
+        continue;
+      }
     }
+
+    resolvedFiles.push(
+      saveProofLocally({
+        fileBuffer,
+        filename: parsedFile.filename
+      })
+    );
   }
 
-  return saveProofLocally({
-    fileBuffer,
-    filename: parsedFile.filename
-  });
+  return resolvedFiles;
+}
+
+function serializeProofOfPayment(proofFiles) {
+  if (!Array.isArray(proofFiles) || !proofFiles.length) {
+    throw new Error("Upload proof_of_payment file.");
+  }
+  if (proofFiles.length === 1) {
+    return proofFiles[0];
+  }
+  return JSON.stringify(proofFiles);
 }
 
 function validatePayload(payload) {
@@ -508,7 +547,8 @@ export async function POST(request) {
     }
 
     validatePayload(payload);
-    const proofOfPayment = await resolveProofOfPayment(formData);
+    const proofOfPaymentFiles = await resolveProofOfPaymentFiles(formData);
+    const proofOfPayment = serializeProofOfPayment(proofOfPaymentFiles);
     const amount = Number(payload.amount_to_be_paid);
 
     const eventDescription = `Gagayam Trail Run (${FIXED_CATEGORY})`;

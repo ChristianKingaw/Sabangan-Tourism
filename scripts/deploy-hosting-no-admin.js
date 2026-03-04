@@ -6,6 +6,23 @@ const projectRoot = process.cwd();
 const stagingRoot = path.join(projectRoot, ".tmp_no_admin_deploy");
 const moved = [];
 
+function movePath(sourcePath, destinationPath) {
+  try {
+    fs.renameSync(sourcePath, destinationPath);
+  } catch (error) {
+    if (error && error.code !== "EPERM" && error.code !== "EXDEV") {
+      throw error;
+    }
+
+    fs.cpSync(sourcePath, destinationPath, {
+      recursive: true,
+      force: false,
+      errorOnExist: true,
+    });
+    fs.rmSync(sourcePath, { recursive: true, force: true });
+  }
+}
+
 function moveToStaging(sourcePath, stagingName) {
   if (!fs.existsSync(sourcePath)) {
     return false;
@@ -17,7 +34,7 @@ function moveToStaging(sourcePath, stagingName) {
     throw new Error(`Cannot move '${sourcePath}' because '${destinationPath}' already exists.`);
   }
 
-  fs.renameSync(sourcePath, destinationPath);
+  movePath(sourcePath, destinationPath);
   moved.push({ sourcePath, destinationPath });
   return true;
 }
@@ -26,7 +43,7 @@ function restoreMoves() {
   for (let index = moved.length - 1; index >= 0; index -= 1) {
     const { sourcePath, destinationPath } = moved[index];
     if (fs.existsSync(destinationPath) && !fs.existsSync(sourcePath)) {
-      fs.renameSync(destinationPath, sourcePath);
+      movePath(destinationPath, sourcePath);
     }
   }
 }

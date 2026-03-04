@@ -2,6 +2,7 @@ import { getFirebaseDb } from "../../../../../../lib/firebaseAdmin";
 import { getAdminPassword, getAdminSessionFromRequest, getAdminUsername } from "../../../../../../lib/adminAuth";
 import { withTimeout } from "../../../../../../lib/withTimeout";
 import { isLocalAdminRequest } from "../../../../../../lib/adminAccess";
+import { sendAcceptanceEmail, sendRejectionEmail } from "../../../../../../lib/acceptanceEmail";
 
 export const runtime = "nodejs";
 
@@ -119,25 +120,100 @@ function normalizeClient(rawClient, fallbackId = "") {
   }
   return {
     id: typeof rawClient.id === "string" && rawClient.id ? rawClient.id : fallbackId,
+    email: typeof rawClient.email === "string" ? rawClient.email : "",
     fname: typeof rawClient.fname === "string" ? rawClient.fname : "",
     mname: typeof rawClient.mname === "string" ? rawClient.mname : "",
     lname: typeof rawClient.lname === "string" ? rawClient.lname : "",
     category: typeof rawClient.category === "string" ? rawClient.category : "15km",
+    shirt_size: typeof rawClient.shirt_size === "string" ? rawClient.shirt_size : "",
     city_prov: typeof rawClient.city_prov === "string" ? rawClient.city_prov : "",
     event_id: typeof rawClient.event_id === "string" ? rawClient.event_id : "gagayam-trail-run-15km",
     created_at: typeof rawClient.created_at === "string" ? rawClient.created_at : ""
   };
 }
 
+function normalizePayment(rawPayment, fallbackId = "") {
+  if (!rawPayment || typeof rawPayment !== "object") {
+    return null;
+  }
+
+  const parsedAmount = Number(rawPayment.amount);
+  return {
+    id: typeof rawPayment.id === "string" && rawPayment.id ? rawPayment.id : fallbackId,
+    client_id: typeof rawPayment.client_id === "string" ? rawPayment.client_id : "",
+    amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
+    created_at: typeof rawPayment.created_at === "string" ? rawPayment.created_at : ""
+  };
+}
+
+function pickLatestPaymentForClient(rawPayments, clientId) {
+  if (!rawPayments || typeof rawPayments !== "object" || !clientId) {
+    return null;
+  }
+
+  let latest = null;
+  Object.entries(rawPayments).forEach(([paymentKey, rawPayment]) => {
+    const payment = normalizePayment(rawPayment, paymentKey);
+    if (!payment || payment.client_id !== clientId) {
+      return;
+    }
+
+    const latestTime = latest?.created_at ? Date.parse(latest.created_at) : 0;
+    const nextTime = payment.created_at ? Date.parse(payment.created_at) : 0;
+    if (!latest || (Number.isFinite(nextTime) ? nextTime : 0) >= (Number.isFinite(latestTime) ? latestTime : 0)) {
+      latest = payment;
+    }
+  });
+
+  return latest;
+}
+
+function formatCategoryLabel(category) {
+  const normalized = String(category || "").trim().toLowerCase();
+  if (!normalized || normalized === "15km" || normalized === "15 km" || normalized === "15k") {
+    return "15KM Regular Run";
+  }
+
+  return String(category || "").trim();
+}
+
+function getRegistrationPaymentTotal(client) {
+  const paymentAmount = Number(client?.payment?.amount);
+  if (Number.isFinite(paymentAmount) && paymentAmount > 0) {
+    return paymentAmount;
+  }
+
+  const fixedAmount = Number(process.env.FIXED_REGISTRATION_AMOUNT || "1500");
+  if (Number.isFinite(fixedAmount) && fixedAmount > 0) {
+    return fixedAmount;
+  }
+
+  return 1500;
+}
+
 async function getClientById(clientId, sessionToken = "") {
   try {
     return await withTimeout(async () => {
       const db = getFirebaseDb();
-      const snapshot = await db.ref(`clients/${clientId}`).get();
-      if (!snapshot.exists()) {
+      const [clientSnapshot, paymentsSnapshot] = await Promise.all([
+        db.ref(`clients/${clientId}`).get(),
+        db.ref("payments").orderByChild("client_id").equalTo(clientId).get()
+      ]);
+
+      if (!clientSnapshot.exists()) {
         return null;
       }
-      return normalizeClient(snapshot.val(), clientId);
+
+      const client = normalizeClient(clientSnapshot.val(), clientId);
+      if (!client) {
+        return null;
+      }
+
+      const payment = pickLatestPaymentForClient(paymentsSnapshot.exists() ? paymentsSnapshot.val() : {}, clientId);
+      return {
+        ...client,
+        payment
+      };
     }, 4500, "Firebase Admin client read");
   } catch {
     const baseUrl = getRealtimeDatabaseUrl();
@@ -145,8 +221,18 @@ async function getClientById(clientId, sessionToken = "") {
       throw new Error("Missing Firebase Realtime Database URL.");
     }
     try {
-      const rawClient = await realtimeRequest(baseUrl, `clients/${clientId}`, "GET", undefined, sessionToken);
-      return normalizeClient(rawClient, clientId);
+      const [rawClient, rawPayments] = await Promise.all([
+        realtimeRequest(baseUrl, `clients/${clientId}`, "GET", undefined, sessionToken),
+        realtimeRequest(baseUrl, "payments", "GET", undefined, sessionToken)
+      ]);
+      const client = normalizeClient(rawClient, clientId);
+      if (!client) {
+        return null;
+      }
+      return {
+        ...client,
+        payment: pickLatestPaymentForClient(rawPayments, clientId)
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (!message.includes("Permission denied")) {
@@ -154,8 +240,18 @@ async function getClientById(clientId, sessionToken = "") {
       }
 
       const freshToken = await fetchFreshAdminFirebaseIdToken();
-      const rawClient = await realtimeRequest(baseUrl, `clients/${clientId}`, "GET", undefined, freshToken);
-      return normalizeClient(rawClient, clientId);
+      const [rawClient, rawPayments] = await Promise.all([
+        realtimeRequest(baseUrl, `clients/${clientId}`, "GET", undefined, freshToken),
+        realtimeRequest(baseUrl, "payments", "GET", undefined, freshToken)
+      ]);
+      const client = normalizeClient(rawClient, clientId);
+      if (!client) {
+        return null;
+      }
+      return {
+        ...client,
+        payment: pickLatestPaymentForClient(rawPayments, clientId)
+      };
     }
   }
 }
@@ -333,11 +429,43 @@ export async function POST(request, context) {
       });
     }
 
-    return Response.json({
+    const responsePayload = {
       ok: true,
       client_id: client.id,
       review_status: status
-    });
+    };
+
+    if (action === "accept" && status === "accepted") {
+      try {
+        await sendAcceptanceEmail({
+          to: client.email,
+          shirtSize: client.shirt_size,
+          categoryLabel: formatCategoryLabel(client.category),
+          registrationFee: getRegistrationPaymentTotal(client)
+        });
+        responsePayload.email_sent = true;
+      } catch (emailError) {
+        responsePayload.email_sent = false;
+        responsePayload.email_error =
+          emailError instanceof Error ? emailError.message : "Failed to send acceptance email.";
+      }
+    }
+
+    if (action === "reject" && status === "rejected") {
+      try {
+        await sendRejectionEmail({
+          to: client.email,
+          categoryLabel: formatCategoryLabel(client.category)
+        });
+        responsePayload.email_sent = true;
+      } catch (emailError) {
+        responsePayload.email_sent = false;
+        responsePayload.email_error =
+          emailError instanceof Error ? emailError.message : "Failed to send rejection email.";
+      }
+    }
+
+    return Response.json(responsePayload);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to review client.";
     return Response.json({ ok: false, error: message }, { status: 500 });

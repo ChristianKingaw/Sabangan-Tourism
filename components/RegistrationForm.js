@@ -8,6 +8,7 @@ const FIXED_CATEGORY = "15km";
 const FIXED_PAYMENT_METHOD = "GCash";
 const GCASH_QR_SRC = "/assets/images/qr.jpg";
 const TRAIL_REGISTRATION_TOTAL = "1500";
+const MAX_PAYMENT_PROOF_FILES = 5;
 
 const initialForm = {
   email: "",
@@ -51,7 +52,7 @@ const fields = {
   emergency_contact_no: { label: "Emergency Contact Number", type: "tel", required: true },
   payment_method: { label: "Payment Method", type: "select", required: true, options: [FIXED_PAYMENT_METHOD] },
   gcash_qr: { label: "GCash QR", type: "custom" },
-  proof_of_payment_file: { label: "Proof Of Payment (File)", type: "file" }
+  proof_of_payment_file: { label: "Proof Of Payment (Files)", type: "file" }
 };
 
 const steps = [
@@ -124,13 +125,8 @@ export default function RegistrationForm() {
   const [isLoadingProvinces, setIsLoadingProvinces] = useState(false);
   const [isLoadingBarangays, setIsLoadingBarangays] = useState(false);
   const [dobParts, setDobParts] = useState({ month: "", day: "", year: "" });
-  const [proofFile, setProofFile] = useState(null);
-  const [proofFileMeta, setProofFileMeta] = useState({
-    name: "",
-    originalSize: 0,
-    finalSize: 0,
-    wasCompressed: false
-  });
+  const [proofFiles, setProofFiles] = useState([]);
+  const [proofFileMeta, setProofFileMeta] = useState([]);
   const [isProcessingProofFile, setIsProcessingProofFile] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [toast, setToast] = useState({ show: false, type: "success", message: "" });
@@ -369,10 +365,21 @@ export default function RegistrationForm() {
 
   const handleFileChange = async (event) => {
     const inputElement = event.target;
-    const selected = inputElement.files && inputElement.files[0] ? inputElement.files[0] : null;
-    if (!selected) {
-      setProofFile(null);
-      setProofFileMeta({ name: "", originalSize: 0, finalSize: 0, wasCompressed: false });
+    const selectedFiles = Array.from(inputElement.files || []);
+    if (!selectedFiles.length) {
+      setProofFiles([]);
+      setProofFileMeta([]);
+      return;
+    }
+
+    if (selectedFiles.length > MAX_PAYMENT_PROOF_FILES) {
+      inputElement.value = "";
+      setProofFiles([]);
+      setProofFileMeta([]);
+      setStatus({
+        type: "error",
+        message: `You can upload up to ${MAX_PAYMENT_PROOF_FILES} proof files only.`
+      });
       return;
     }
 
@@ -380,24 +387,33 @@ export default function RegistrationForm() {
     setStatus({ type: "", message: "" });
 
     try {
-      const compressed = await compressPaymentFile(selected);
-      setProofFile(compressed.file);
-      setProofFileMeta({
-        name: compressed.file.name,
-        originalSize: compressed.originalSize,
-        finalSize: compressed.finalSize,
-        wasCompressed: compressed.wasCompressed
-      });
+      const compressedFiles = [];
+      for (const file of selectedFiles) {
+        // Keep compression sequential to reduce memory spikes on lower-end mobile devices.
+        // eslint-disable-next-line no-await-in-loop
+        const compressed = await compressPaymentFile(file);
+        compressedFiles.push(compressed);
+      }
+      const nextFiles = compressedFiles.map((item) => item.file);
+      const nextMeta = compressedFiles.map((item) => ({
+        name: item.file.name,
+        originalSize: item.originalSize,
+        finalSize: item.finalSize,
+        wasCompressed: item.wasCompressed
+      }));
+      const compressedCount = compressedFiles.filter((item) => item.wasCompressed).length;
+      setProofFiles(nextFiles);
+      setProofFileMeta(nextMeta);
       setStatus({
         type: "success",
-        message: compressed.wasCompressed
-          ? `Payment file compressed: ${formatBytes(compressed.originalSize)} -> ${formatBytes(compressed.finalSize)}.`
-          : `Payment file ready: ${formatBytes(compressed.finalSize)}.`
+        message: compressedCount
+          ? `${nextFiles.length} payment file${nextFiles.length === 1 ? "" : "s"} ready (${compressedCount} compressed).`
+          : `${nextFiles.length} payment file${nextFiles.length === 1 ? "" : "s"} ready.`
       });
     } catch (error) {
       inputElement.value = "";
-      setProofFile(null);
-      setProofFileMeta({ name: "", originalSize: 0, finalSize: 0, wasCompressed: false });
+      setProofFiles([]);
+      setProofFileMeta([]);
       setStatus({
         type: "error",
         message: error instanceof Error ? error.message : "Failed to process payment file."
@@ -482,8 +498,8 @@ export default function RegistrationForm() {
     }
 
     if (index === steps.length - 1) {
-      if (!proofFile) {
-        setStatus({ type: "error", message: "Upload proof of payment file." });
+      if (!proofFiles.length) {
+        setStatus({ type: "error", message: "Upload at least one proof of payment file." });
         return false;
       }
       if (!accepted) {
@@ -518,7 +534,7 @@ export default function RegistrationForm() {
       payload.append("dob", dob);
       payload.append("privacy_consent", "true");
       payload.append("privacy_consent_at", consentAtIso);
-      if (proofFile) {
+      for (const proofFile of proofFiles) {
         payload.append("proof_of_payment_file", proofFile);
       }
 
@@ -544,8 +560,8 @@ export default function RegistrationForm() {
       setMunicipalityOptions([]);
       setBarangayOptions([]);
       setDobParts({ month: "", day: "", year: "" });
-      setProofFile(null);
-      setProofFileMeta({ name: "", originalSize: 0, finalSize: 0, wasCompressed: false });
+      setProofFiles([]);
+      setProofFileMeta([]);
       setAccepted(false);
       setStepIndex(0);
       if (formRef.current) {
@@ -679,6 +695,9 @@ export default function RegistrationForm() {
             />
             <p className="registration-qr-text mb-0">
               Scan this QR code in GCash, then upload your proof of payment below.
+            </p>
+            <p className="registration-qr-fallback mb-0">
+              If QR code is not applicable, use this number: <strong>0950-043-3396</strong>
             </p>
           </div>
         </div>
@@ -863,18 +882,24 @@ export default function RegistrationForm() {
             type="file"
             accept=".jpg,.jpeg,.png,.webp,.pdf"
             className="form-control registration-input"
+            multiple
             onChange={handleFileChange}
             disabled={isProcessingProofFile || isSubmitting}
           />
           <small className="registration-upload-hint">
-            Allowed: JPG, PNG, WEBP, PDF. Max {formatBytes(PAYMENT_MAX_FILE_BYTES)} after compression.
+            Allowed: JPG, PNG, WEBP, PDF. Max {formatBytes(PAYMENT_MAX_FILE_BYTES)} each after compression.
+            Up to {MAX_PAYMENT_PROOF_FILES} files.
           </small>
-          {proofFileMeta.name ? (
-            <small className="registration-upload-meta">
-              {proofFileMeta.wasCompressed
-                ? `${proofFileMeta.name} (${formatBytes(proofFileMeta.originalSize)} -> ${formatBytes(proofFileMeta.finalSize)})`
-                : `${proofFileMeta.name} (${formatBytes(proofFileMeta.finalSize)})`}
-            </small>
+          {proofFileMeta.length ? (
+            <div className="registration-upload-meta-list" role="list" aria-label="Selected payment proof files">
+              {proofFileMeta.map((meta, index) => (
+                <small key={`${meta.name}-${meta.finalSize}-${index}`} className="registration-upload-meta" role="listitem">
+                  {meta.wasCompressed
+                    ? `${meta.name} (${formatBytes(meta.originalSize)} -> ${formatBytes(meta.finalSize)})`
+                    : `${meta.name} (${formatBytes(meta.finalSize)})`}
+                </small>
+              ))}
+            </div>
           ) : null}
         </div>
       );
@@ -1245,6 +1270,13 @@ export default function RegistrationForm() {
           color: #184d35;
         }
 
+        .registration-upload-meta-list {
+          margin-top: 0.22rem;
+          display: grid;
+          gap: 0.24rem;
+          max-width: 100%;
+        }
+
         .health-check-options {
           display: flex;
           flex-wrap: wrap;
@@ -1324,6 +1356,13 @@ export default function RegistrationForm() {
           color: #174c35;
           font-size: 0.82rem;
           font-weight: 600;
+        }
+
+        .registration-qr-fallback {
+          margin-top: 0.4rem;
+          color: #174c35;
+          font-size: 0.78rem;
+          font-weight: 500;
         }
 
         .registration-close-btn,
@@ -1548,6 +1587,15 @@ export default function RegistrationForm() {
           .registration-form-grid .form-select,
           .registration-form-grid .form-control {
             font-size: 16px;
+          }
+
+          .registration-upload-meta-list {
+            gap: 0.2rem;
+          }
+
+          .registration-upload-meta {
+            overflow-wrap: anywhere;
+            word-break: break-word;
           }
 
           .registration-qr-panel {

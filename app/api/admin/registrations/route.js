@@ -5,6 +5,39 @@ import { isLocalAdminRequest } from "../../../../lib/adminAccess";
 
 export const runtime = "nodejs";
 
+function parseProofOfPaymentFiles(value) {
+  if (Array.isArray(value)) {
+    return value
+      .filter((entry) => typeof entry === "string" && entry.trim())
+      .map((entry) => entry.trim());
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  if (!trimmed.startsWith("[")) {
+    return [trimmed];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!Array.isArray(parsed)) {
+      return [trimmed];
+    }
+    return parsed
+      .filter((entry) => typeof entry === "string" && entry.trim())
+      .map((entry) => entry.trim());
+  } catch {
+    return [trimmed];
+  }
+}
+
 function getRealtimeDatabaseUrl() {
   const direct = process.env.FIREBASE_DATABASE_URL;
   const publicUrl = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
@@ -127,6 +160,7 @@ function normalizeAdminRows(rawClients, rawPayments) {
       }
       const clientId = typeof client.id === "string" && client.id ? client.id : clientKey;
       const payment = paymentsByClientId.get(clientId) || null;
+      const proofOfPaymentFiles = parseProofOfPaymentFiles(payment?.proof_of_payment);
       return {
         id: clientId,
         email: typeof client.email === "string" ? client.email : "",
@@ -161,7 +195,8 @@ function normalizeAdminRows(rawClients, rawPayments) {
               id: typeof payment.id === "string" ? payment.id : "",
               payment_method: typeof payment.payment_method === "string" ? payment.payment_method : "",
               amount: typeof payment.amount === "number" ? payment.amount : Number(payment.amount || 0),
-              proof_of_payment: typeof payment.proof_of_payment === "string" ? payment.proof_of_payment : "",
+              proof_of_payment: proofOfPaymentFiles[0] || "",
+              proof_of_payment_files: proofOfPaymentFiles,
               created_at: typeof payment.created_at === "string" ? payment.created_at : "",
               updated_at: typeof payment.updated_at === "string" ? payment.updated_at : ""
             }
