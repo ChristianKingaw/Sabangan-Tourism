@@ -124,6 +124,13 @@ async function deployHostingWithPatchedDynamicExtensionCheck() {
 
 async function main() {
   try {
+    // Force a single cache-busting version per deployment.
+    process.env.NEXT_PUBLIC_DEPLOY_VERSION =
+      process.env.NEXT_PUBLIC_DEPLOY_VERSION || String(Date.now());
+    console.log(
+      `i  deploy: using NEXT_PUBLIC_DEPLOY_VERSION=${process.env.NEXT_PUBLIC_DEPLOY_VERSION}`,
+    );
+
     moveToStaging(path.join(projectRoot, "app", "admin"), "app-admin");
     moveToStaging(path.join(projectRoot, "app", "api", "admin"), "app-api-admin");
     await deployHostingWithPatchedDynamicExtensionCheck();

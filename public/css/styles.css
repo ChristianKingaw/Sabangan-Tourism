@@ -1582,10 +1582,23 @@ main {
   margin-bottom: 0.8rem;
 }
 
+.registered-clients-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .registered-clients-status {
   color: #d7f4e6;
   font-size: 0.86rem;
   font-weight: 700;
+}
+
+.registered-clients-note {
+  color: #a8dac2;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  max-width: 46rem;
 }
 
 .registered-clients-status[data-state="error"] {
@@ -1809,6 +1822,21 @@ main {
   line-height: 1.5;
 }
 
+.register-deadline-countdown {
+  display: block;
+  margin-top: 0.4rem;
+  color: #fff4cf;
+  font-family: "Montserrat", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.04rem;
+  text-transform: uppercase;
+}
+
+.register-deadline-countdown[data-state="closed"] {
+  color: #fecaca;
+}
+
 .register-panel {
   background: rgba(2, 24, 17, 0.42);
   border: 1px solid rgba(148, 163, 184, 0.34);
@@ -1850,6 +1878,7 @@ main {
 }
 
 .register-transport-panel {
+  margin-top: 1rem;
   margin-left: auto;
   margin-right: auto;
   max-width: 100%;
@@ -3032,11 +3061,9 @@ footer {
 }
 
 @media (max-width: 575.98px) {
-  .registered-clients-table thead th:nth-child(1),
   .registered-clients-table thead th:nth-child(3),
   .registered-clients-table thead th:nth-child(4),
   .registered-clients-table thead th:nth-child(6),
-  .registered-clients-table tbody tr td:not([colspan]):nth-child(1),
   .registered-clients-table tbody tr td:not([colspan]):nth-child(3),
   .registered-clients-table tbody tr td:not([colspan]):nth-child(4),
   .registered-clients-table tbody tr td:not([colspan]):nth-child(6) {

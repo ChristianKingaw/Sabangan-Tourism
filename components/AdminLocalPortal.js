@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./AdminLocalPortal.module.css";
 
-const AUTO_REFRESH_INTERVAL_MS = 60000;
+const SHIRT_SIZE_BUCKETS = ["XS", "S", "M", "L", "XL", "XL+"];
+const SECTION_DASHBOARD = "dashboard";
+const SECTION_CLIENTS = "clients";
 
 function buildFullName(row) {
   return [row?.fname, row?.mname, row?.lname].filter(Boolean).join(" ").trim() || "Unknown";
@@ -27,30 +29,107 @@ function normalizeReviewStatus(value) {
   return value.trim().toLowerCase() || "pending";
 }
 
-function getPaymentProofFiles(payment) {
-  if (!payment) {
-    return [];
-  }
-
-  if (Array.isArray(payment.proof_of_payment_files)) {
-    return payment.proof_of_payment_files.filter((entry) => typeof entry === "string" && entry.trim());
-  }
-
-  if (typeof payment.proof_of_payment === "string" && payment.proof_of_payment.trim()) {
-    return [payment.proof_of_payment.trim()];
-  }
-
-  return [];
-}
-
 function isPdfSource(source) {
   const value = String(source || "").toLowerCase();
   return value.startsWith("data:application/pdf") || value.endsWith(".pdf");
 }
 
+function normalizeShirtSizeBucket(value) {
+  const compactValue = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9+]/g, "");
+
+  if (!compactValue) {
+    return "";
+  }
+
+  if (compactValue === "XS" || compactValue === "XSMALL" || compactValue === "EXTRASMALL") {
+    return "XS";
+  }
+
+  if (compactValue === "S" || compactValue === "SMALL") {
+    return "S";
+  }
+
+  if (compactValue === "M" || compactValue === "MEDIUM") {
+    return "M";
+  }
+
+  if (compactValue === "L" || compactValue === "LARGE") {
+    return "L";
+  }
+
+  if (compactValue === "XL" || compactValue === "XLARGE" || compactValue === "EXTRALARGE") {
+    return "XL";
+  }
+
+  if (compactValue === "XXL" || /^X{3,}L$/.test(compactValue) || /^[2-9]XL$/.test(compactValue)) {
+    return "XL+";
+  }
+
+  return "XL+";
+}
+
+function formatAddress(row) {
+  const allParts = [
+    row?.address,
+    row?.barangay,
+    row?.city_municipality,
+    row?.province_state,
+    row?.city_prov
+  ]
+    .filter(Boolean)
+    .map(part => part.trim())
+    .filter(part => part.length > 0);
+
+  if (!allParts.length) {
+    return "-";
+  }
+
+  // Remove duplicates while preserving order
+  const uniqueParts = [];
+
+  for (const part of allParts) {
+    // Skip if this part is already included
+    if (uniqueParts.includes(part)) {
+      continue;
+    }
+
+    // Skip if this part is a substring of any already included part
+    const isSubstringOfExisting = uniqueParts.some(existing =>
+      existing.toLowerCase().includes(part.toLowerCase())
+    );
+
+    if (isSubstringOfExisting) {
+      continue;
+    }
+
+    // Remove any existing parts that are substrings of this part
+    for (let i = uniqueParts.length - 1; i >= 0; i--) {
+      if (part.toLowerCase().includes(uniqueParts[i].toLowerCase())) {
+        uniqueParts.splice(i, 1);
+      }
+    }
+
+    uniqueParts.push(part);
+  }
+
+  const zipCode = row?.zip_code ? ` ${row.zip_code}` : "";
+  return `${uniqueParts.join(", ")}${zipCode}`.trim();
+}
+
+function formatPhone(value) {
+  if (value == null) {
+    return "-";
+  }
+  const text = String(value).trim();
+  return text ? text : "-";
+}
+
 export default function AdminLocalPortal() {
   const [credentials, setCredentials] = useState({ username: "", password: "" });
-  const [acceptMode, setAcceptMode] = useState("auto");
+  const [activeSection, setActiveSection] = useState(SECTION_DASHBOARD);
   const [isBootLoading, setIsBootLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -60,29 +139,43 @@ export default function AdminLocalPortal() {
   const [selectedId, setSelectedId] = useState("");
   const [actionLoading, setActionLoading] = useState("");
   const [proofModalState, setProofModalState] = useState({ sources: [], index: 0 });
+  const [paymentProofCache, setPaymentProofCache] = useState({});
+  const [paymentProofLoadingId, setPaymentProofLoadingId] = useState("");
+  const [paymentProofNotice, setPaymentProofNotice] = useState({ clientId: "", tone: "", message: "" });
   const [status, setStatus] = useState({ type: "", message: "" });
-  const knownClientIdsRef = useRef(new Set());
-  const queuedAutoAcceptIdsRef = useRef(new Set());
-  const autoAcceptInFlightIdsRef = useRef(new Set());
-  const hasBaselineSnapshotRef = useRef(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const selectedRow = useMemo(() => rows.find((row) => row.id === selectedId) || null, [rows, selectedId]);
-  const selectedPaymentProofFiles = useMemo(
-    () => getPaymentProofFiles(selectedRow?.payment),
-    [selectedRow]
-  );
+  const selectedProofCount = selectedRow?.payment?.proof_file_count || 0;
+  const hasSelectedProof = Boolean(selectedRow?.payment?.has_proof_of_payment) || selectedProofCount > 0;
+  const dashboardStats = useMemo(() => {
+    let acceptedCount = 0;
+    const sizeCounts = SHIRT_SIZE_BUCKETS.reduce((accumulator, sizeKey) => {
+      accumulator[sizeKey] = 0;
+      return accumulator;
+    }, {});
+
+    rows.forEach((row) => {
+      if (normalizeReviewStatus(row?.review_status) === "accepted") {
+        acceptedCount += 1;
+      }
+
+      const bucket = normalizeShirtSizeBucket(row?.shirt_size);
+      if (bucket && Object.prototype.hasOwnProperty.call(sizeCounts, bucket)) {
+        sizeCounts[bucket] += 1;
+      }
+    });
+
+    return {
+      acceptedCount,
+      sizeCounts,
+    };
+  }, [rows]);
   const proofModalSrc = proofModalState.sources[proofModalState.index] || "";
   const proofModalCount = proofModalState.sources.length;
   const isModalShowingPdf = isPdfSource(proofModalSrc);
   const statusToneClass =
     status.type === "error" ? styles.statusError : status.type === "success" ? styles.statusSuccess : "";
-
-  const resetAutoTracking = useCallback(() => {
-    knownClientIdsRef.current.clear();
-    queuedAutoAcceptIdsRef.current.clear();
-    autoAcceptInFlightIdsRef.current.clear();
-    hasBaselineSnapshotRef.current = false;
-  }, []);
 
   const submitReviewById = useCallback(async (clientId, action, { silent = false } = {}) => {
     if (!clientId) {
@@ -108,7 +201,6 @@ export default function AdminLocalPortal() {
       if (action === "delete") {
         setRows((prev) => prev.filter((row) => row.id !== clientId));
         setSelectedId((current) => (current === clientId ? "" : current));
-        queuedAutoAcceptIdsRef.current.delete(clientId);
         if (!silent) {
           setStatus({ type: "success", message: "Registration deleted." });
         }
@@ -127,7 +219,6 @@ export default function AdminLocalPortal() {
             : row
         )
       );
-      queuedAutoAcceptIdsRef.current.delete(clientId);
 
       if (!silent && (action === "accept" || action === "reject") && payload.email_sent === false) {
         const statusWord = action === "accept" ? "accepted" : "rejected";
@@ -167,60 +258,6 @@ export default function AdminLocalPortal() {
     }
   }, []);
 
-  const autoAcceptQueuedClients = useCallback(async (snapshotRows) => {
-    const queuedIds = queuedAutoAcceptIdsRef.current;
-    const inFlightIds = autoAcceptInFlightIdsRef.current;
-    const candidates = snapshotRows.filter((row) => {
-      const clientId = row?.id;
-      if (!clientId || !queuedIds.has(clientId)) {
-        return false;
-      }
-      if (normalizeReviewStatus(row.review_status) !== "pending") {
-        queuedIds.delete(clientId);
-        return false;
-      }
-      return !inFlightIds.has(clientId);
-    });
-
-    if (!candidates.length) {
-      return;
-    }
-
-    let acceptedCount = 0;
-    let failedCount = 0;
-
-    for (const row of candidates) {
-      const clientId = row.id;
-      inFlightIds.add(clientId);
-      try {
-        const result = await submitReviewById(clientId, "accept", { silent: true });
-        if (result.ok) {
-          acceptedCount += 1;
-          queuedIds.delete(clientId);
-        } else {
-          failedCount += 1;
-        }
-      } finally {
-        inFlightIds.delete(clientId);
-      }
-    }
-
-    if (failedCount > 0) {
-      setStatus({
-        type: "error",
-        message: `Auto-accept completed: ${acceptedCount} accepted, ${failedCount} failed.`
-      });
-      return;
-    }
-
-    if (acceptedCount > 0) {
-      setStatus({
-        type: "success",
-        message: `Auto-accepted ${acceptedCount} new registration${acceptedCount === 1 ? "" : "s"}.`
-      });
-    }
-  }, [submitReviewById]);
-
   const loadRows = useCallback(async ({ showLoading = true } = {}) => {
     if (showLoading) {
       setIsLoadingRows(true);
@@ -233,7 +270,6 @@ export default function AdminLocalPortal() {
         setIsAuthenticated(false);
         setRows([]);
         setSelectedId("");
-        resetAutoTracking();
         return;
       }
       if (!response.ok || !payload.ok) {
@@ -243,34 +279,6 @@ export default function AdminLocalPortal() {
       const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
       setRows(nextRows);
       setSelectedId((current) => (current && nextRows.some((row) => row.id === current) ? current : (nextRows[0]?.id || "")));
-
-      if (!hasBaselineSnapshotRef.current) {
-        knownClientIdsRef.current = new Set(nextRows.map((row) => row.id).filter(Boolean));
-        queuedAutoAcceptIdsRef.current.clear();
-        hasBaselineSnapshotRef.current = true;
-        return;
-      }
-
-      const knownClientIds = knownClientIdsRef.current;
-      nextRows.forEach((row) => {
-        if (!row?.id || knownClientIds.has(row.id)) {
-          return;
-        }
-        knownClientIds.add(row.id);
-        queuedAutoAcceptIdsRef.current.add(row.id);
-      });
-
-      const rowsById = new Map(nextRows.filter((row) => row?.id).map((row) => [row.id, row]));
-      for (const queuedClientId of Array.from(queuedAutoAcceptIdsRef.current)) {
-        const row = rowsById.get(queuedClientId);
-        if (!row || normalizeReviewStatus(row.review_status) !== "pending") {
-          queuedAutoAcceptIdsRef.current.delete(queuedClientId);
-        }
-      }
-
-      if (acceptMode === "auto") {
-        await autoAcceptQueuedClients(nextRows);
-      }
     } catch (error) {
       setStatus({
         type: "error",
@@ -281,7 +289,7 @@ export default function AdminLocalPortal() {
         setIsLoadingRows(false);
       }
     }
-  }, [acceptMode, autoAcceptQueuedClients, resetAutoTracking]);
+  }, []);
 
   useEffect(() => {
     const boot = async () => {
@@ -306,16 +314,12 @@ export default function AdminLocalPortal() {
   }, [loadRows]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      return undefined;
+    if (!isAuthenticated || activeSection !== SECTION_CLIENTS) {
+      return;
     }
 
-    const timerId = setInterval(() => {
-      loadRows({ showLoading: false }).catch(() => {});
-    }, AUTO_REFRESH_INTERVAL_MS);
-
-    return () => clearInterval(timerId);
-  }, [isAuthenticated, loadRows]);
+    loadRows({ showLoading: false }).catch(() => {});
+  }, [activeSection, isAuthenticated, loadRows]);
 
   useEffect(() => {
     if (!proofModalSrc) {
@@ -358,6 +362,10 @@ export default function AdminLocalPortal() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [proofModalSrc]);
 
+  useEffect(() => {
+    setPaymentProofNotice({ clientId: "", tone: "", message: "" });
+  }, [selectedId]);
+
   const handleCredentialChange = (event) => {
     const { name, value } = event.target;
     setCredentials((prev) => ({ ...prev, [name]: value }));
@@ -379,7 +387,6 @@ export default function AdminLocalPortal() {
       }
       setIsAuthenticated(true);
       setStatus({ type: "success", message: "Logged in." });
-      resetAutoTracking();
       await loadRows({ showLoading: true });
     } catch (error) {
       setStatus({
@@ -399,7 +406,6 @@ export default function AdminLocalPortal() {
       setIsAuthenticated(false);
       setRows([]);
       setSelectedId("");
-      resetAutoTracking();
     } finally {
       setIsLoggingOut(false);
     }
@@ -416,21 +422,6 @@ export default function AdminLocalPortal() {
     }
 
     await submitReviewById(selectedRow.id, action);
-  };
-
-  const handleModeChange = (nextMode) => {
-    if (nextMode === acceptMode) {
-      return;
-    }
-
-    setAcceptMode(nextMode);
-    if (nextMode === "manual") {
-      setStatus({ type: "success", message: "Switched to manual accept mode." });
-      return;
-    }
-
-    setStatus({ type: "success", message: "Switched to auto accept mode." });
-    autoAcceptQueuedClients(rows).catch(() => {});
   };
 
   const openProofModal = (sources, startIndex = 0) => {
@@ -469,6 +460,290 @@ export default function AdminLocalPortal() {
         index: (current.index - 1 + current.sources.length) % current.sources.length
       };
     });
+  };
+
+  const handleViewPaymentProof = async () => {
+    if (!selectedRow?.id) {
+      return;
+    }
+
+    const clientId = selectedRow.id;
+    const cachedFiles = paymentProofCache[clientId];
+    if (Array.isArray(cachedFiles)) {
+      if (cachedFiles.length) {
+        openProofModal(cachedFiles, 0);
+      } else {
+        setPaymentProofNotice({ clientId, tone: "muted", message: "No payment proof found." });
+      }
+      return;
+    }
+
+    setPaymentProofLoadingId(clientId);
+    setPaymentProofNotice({ clientId: "", tone: "", message: "" });
+
+    try {
+      const response = await fetch(
+        `/api/admin/registrations/${encodeURIComponent(clientId)}/payment-proof`,
+        { cache: "no-store" }
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || "Failed to load payment proof.");
+      }
+
+      const files = Array.isArray(payload.files)
+        ? payload.files.filter((entry) => typeof entry === "string" && entry.trim())
+        : [];
+      setPaymentProofCache((prev) => ({ ...prev, [clientId]: files }));
+
+      if (files.length) {
+        openProofModal(files, 0);
+      } else {
+        setPaymentProofNotice({ clientId, tone: "muted", message: "No payment proof found." });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load payment proof.";
+      setPaymentProofNotice({ clientId, tone: "error", message });
+    } finally {
+      setPaymentProofLoadingId("");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    const acceptedRows = rows.filter((row) => normalizeReviewStatus(row?.review_status) === "accepted");
+    if (!acceptedRows.length) {
+      setStatus({ type: "error", message: "No accepted registrations available to export." });
+      return;
+    }
+
+    setIsExporting(true);
+    setStatus({ type: "", message: "" });
+
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 40;
+      const marginTop = 40;
+      const marginBottom = 50;
+      const lineHeight = 14;
+      let cursorY = marginTop;
+
+      const accentColor = [22, 101, 52];
+      const headerBg = [22, 101, 52];
+      const headerText = [255, 255, 255];
+      const evenRowBg = [245, 250, 247];
+      const oddRowBg = [255, 255, 255];
+      const borderColor = [209, 213, 219];
+      const mutedText = [107, 114, 128];
+
+      const tableColumns = [
+        { header: "#", width: 30, align: "center", getValue: (_row, index) => String(index + 1) },
+        { header: "Full Name", width: 160, getValue: (row) => buildFullName(row) },
+        { header: "Email", width: 170, getValue: (row) => row?.email || "-" },
+        { header: "Address", width: 190, getValue: (row) => formatAddress(row) },
+        { header: "Contact No.", width: 90, getValue: (row) => formatPhone(row?.contact_no) },
+        { header: "Shirt Size", width: 60, align: "center", getValue: (row) => row?.shirt_size || "-" },
+        { header: "Category", width: 80, getValue: (row) => row?.category || "-" }
+      ];
+      const tableWidth = tableColumns.reduce((sum, col) => sum + col.width, 0);
+      const tableStartX = Math.max(marginX, (pageWidth - tableWidth) / 2);
+      const cellPaddingX = 6;
+      const cellPaddingY = 5;
+
+      const addPageFooter = () => {
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.setTextColor(...mutedText);
+          doc.text(
+            `Page ${i} of ${pageCount}`,
+            pageWidth / 2,
+            pageHeight - 20,
+            { align: "center" }
+          );
+        }
+      };
+
+      const renderTableHeader = () => {
+        const headerHeight = lineHeight + cellPaddingY * 2;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(...headerText);
+        doc.setDrawColor(...borderColor);
+        doc.setLineWidth(0.5);
+        let headerX = tableStartX;
+        tableColumns.forEach((column) => {
+          doc.setFillColor(...headerBg);
+          doc.rect(headerX, cursorY, column.width, headerHeight, "FD");
+          const textX = column.align === "center"
+            ? headerX + column.width / 2
+            : headerX + cellPaddingX;
+          doc.text(
+            column.header,
+            textX,
+            cursorY + cellPaddingY + lineHeight - 3,
+            column.align === "center" ? { align: "center" } : undefined
+          );
+          headerX += column.width;
+        });
+        cursorY += headerHeight;
+      };
+
+      const addPageIfNeeded = (nextHeight = 0) => {
+        if (cursorY + nextHeight <= pageHeight - marginBottom) {
+          return;
+        }
+        doc.addPage();
+        cursorY = marginTop;
+        renderTableHeader();
+      };
+
+      // --- Header accent bar ---
+      doc.setFillColor(...accentColor);
+      doc.rect(0, 0, pageWidth, 6, "F");
+
+      cursorY = marginTop + 10;
+
+      // --- Title ---
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(17, 24, 39);
+      doc.text("Accepted Clients Report", marginX, cursorY);
+      cursorY += 18;
+
+      // --- Subtitle / date ---
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...mutedText);
+      doc.text(`Generated on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`, marginX, cursorY);
+      cursorY += 24;
+
+      // --- Summary cards row ---
+      const acceptedSizeCounts = SHIRT_SIZE_BUCKETS.reduce((accumulator, sizeKey) => {
+        accumulator[sizeKey] = 0;
+        return accumulator;
+      }, {});
+      acceptedRows.forEach((row) => {
+        const bucket = normalizeShirtSizeBucket(row?.shirt_size);
+        if (bucket && Object.prototype.hasOwnProperty.call(acceptedSizeCounts, bucket)) {
+          acceptedSizeCounts[bucket] += 1;
+        }
+      });
+
+      const summaryItems = [
+        { label: "Total Accepted", value: String(acceptedRows.length) },
+        ...SHIRT_SIZE_BUCKETS.map((sizeKey) => ({
+          label: sizeKey,
+          value: String(acceptedSizeCounts[sizeKey] || 0)
+        }))
+      ];
+      const cardWidth = 68;
+      const cardHeight = 40;
+      const cardGap = 8;
+      const totalCardsWidth = summaryItems.length * cardWidth + (summaryItems.length - 1) * cardGap;
+      let cardX = Math.max(marginX, (pageWidth - totalCardsWidth) / 2);
+
+      summaryItems.forEach((item, i) => {
+        const isFirst = i === 0;
+        if (isFirst) {
+          doc.setFillColor(...accentColor);
+        } else {
+          doc.setFillColor(241, 245, 249);
+        }
+        doc.roundedRect(cardX, cursorY, cardWidth, cardHeight, 4, 4, "F");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(isFirst ? 16 : 14);
+        if (isFirst) {
+          doc.setTextColor(255, 255, 255);
+        } else {
+          doc.setTextColor(17, 24, 39);
+        }
+        doc.text(item.value, cardX + cardWidth / 2, cursorY + 18, { align: "center" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        if (isFirst) {
+          doc.setTextColor(187, 222, 200);
+        } else {
+          doc.setTextColor(...mutedText);
+        }
+        doc.text(item.label, cardX + cardWidth / 2, cursorY + 32, { align: "center" });
+
+        cardX += cardWidth + cardGap;
+      });
+
+      cursorY += cardHeight + 20;
+
+      // --- Divider line ---
+      doc.setDrawColor(...borderColor);
+      doc.setLineWidth(0.5);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 14;
+
+      // --- Table ---
+      renderTableHeader();
+
+      const sortedRows = [...acceptedRows].sort((a, b) => buildFullName(a).localeCompare(buildFullName(b)));
+
+      doc.setFontSize(8);
+
+      sortedRows.forEach((row, rowIndex) => {
+        const cellLines = tableColumns.map((column) =>
+          doc.splitTextToSize(String(column.getValue(row, rowIndex) || "-"), column.width - cellPaddingX * 2)
+        );
+        const rowHeight = Math.max(...cellLines.map((lines) => lines.length)) * lineHeight + cellPaddingY * 2;
+
+        addPageIfNeeded(rowHeight);
+
+        const isEven = rowIndex % 2 === 0;
+        let cellX = tableStartX;
+        doc.setDrawColor(...borderColor);
+        doc.setLineWidth(0.25);
+
+        cellLines.forEach((lines, columnIndex) => {
+          const column = tableColumns[columnIndex];
+          doc.setFillColor(...(isEven ? evenRowBg : oddRowBg));
+          doc.rect(cellX, cursorY, column.width, rowHeight, "FD");
+
+          doc.setFont("helvetica", columnIndex === 1 ? "bold" : "normal");
+          doc.setTextColor(17, 24, 39);
+          lines.forEach((line, lineIndex) => {
+            const textX = column.align === "center"
+              ? cellX + column.width / 2
+              : cellX + cellPaddingX;
+            doc.text(
+              line,
+              textX,
+              cursorY + cellPaddingY + lineHeight * (lineIndex + 1) - 3,
+              column.align === "center" ? { align: "center" } : undefined
+            );
+          });
+          cellX += column.width;
+        });
+
+        cursorY += rowHeight;
+      });
+
+      // --- Bottom border for table ---
+      doc.setDrawColor(...accentColor);
+      doc.setLineWidth(1.5);
+      doc.line(tableStartX, cursorY, tableStartX + tableWidth, cursorY);
+
+      addPageFooter();
+
+      doc.save("accepted-clients-report.pdf");
+      setStatus({ type: "success", message: "Accepted clients report exported to PDF." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to export PDF.";
+      setStatus({ type: "error", message });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (isBootLoading) {
@@ -524,145 +799,201 @@ export default function AdminLocalPortal() {
   }
 
   return (
-    <main className={styles.shell}>
+    <main className={`${styles.shell} ${styles.shellApp}`.trim()}>
       <section className={styles.appCard}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Localhost Access</p>
-            <h1 className={styles.title}>Admin Portal</h1>
-          </div>
-          <div className={styles.headerActions}>
-            <div className={styles.acceptModeButtons} role="group" aria-label="Acceptance mode">
-              <button
-                className={`${styles.secondaryButton} ${acceptMode === "manual" ? styles.modeButtonActive : ""}`.trim()}
-                type="button"
-                onClick={() => handleModeChange("manual")}
-                disabled={isLoadingRows || isLoggingOut}
-              >
-                Manual Accept
-              </button>
-              <button
-                className={`${styles.secondaryButton} ${acceptMode === "auto" ? styles.modeButtonActive : ""}`.trim()}
-                type="button"
-                onClick={() => handleModeChange("auto")}
-                disabled={isLoadingRows || isLoggingOut}
-              >
-                Auto Accept
-              </button>
-            </div>
+        <div className={styles.appLayout}>
+          <aside className={styles.sidebar}>
+            <p className={styles.sidebarTitle}>Navigation</p>
             <button
-              className={styles.secondaryButton}
+              className={`${styles.sidebarButton} ${activeSection === SECTION_DASHBOARD ? styles.sidebarButtonActive : ""}`.trim()}
               type="button"
-              onClick={() => {
-                loadRows({ showLoading: true }).catch(() => {});
-              }}
-              disabled={isLoadingRows || isLoggingOut}
+              onClick={() => setActiveSection(SECTION_DASHBOARD)}
             >
-              {isLoadingRows ? "Refreshing..." : "Refresh"}
+              Dashboard
             </button>
-            <button className={styles.secondaryButton} type="button" onClick={handleLogout} disabled={isLoggingOut}>
-              {isLoggingOut ? "Signing out..." : "Logout"}
+            <button
+              className={`${styles.sidebarButton} ${activeSection === SECTION_CLIENTS ? styles.sidebarButtonActive : ""}`.trim()}
+              type="button"
+              onClick={() => setActiveSection(SECTION_CLIENTS)}
+            >
+              Clients List
             </button>
-          </div>
-        </header>
+          </aside>
 
-        {status.message ? <p className={`${styles.status} ${statusToneClass}`.trim()}>{status.message}</p> : null}
+          <div className={styles.mainPanel}>
+            <header className={styles.header}>
+              <div>
+                <p className={styles.eyebrow}>Localhost Access</p>
+                <h1 className={styles.title}>Admin Portal</h1>
+              </div>
+              <div className={styles.headerActions}>
+                {activeSection === SECTION_CLIENTS ? (
+                  <button
+                    className={styles.secondaryButton}
+                    type="button"
+                    onClick={handleExportPdf}
+                    disabled={isExporting || isLoadingRows || !rows.length}
+                  >
+                    {isExporting ? "Exporting..." : "Export PDF"}
+                  </button>
+                ) : null}
+                <button
+                  className={styles.secondaryButton}
+                  type="button"
+                  onClick={() => {
+                    loadRows({ showLoading: true }).catch(() => {});
+                  }}
+                  disabled={isLoadingRows || isLoggingOut}
+                >
+                  {isLoadingRows ? "Refreshing..." : "Refresh"}
+                </button>
+                <button className={styles.secondaryButton} type="button" onClick={handleLogout} disabled={isLoggingOut}>
+                  {isLoggingOut ? "Signing out..." : "Logout"}
+                </button>
+              </div>
+            </header>
 
-        <div className={styles.contentGrid}>
-          <section className={styles.listPanel}>
-            {rows.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                onClick={() => setSelectedId(row.id)}
-                className={`${styles.rowButton} ${selectedId === row.id ? styles.rowButtonActive : ""}`.trim()}
-              >
-                <div className={styles.rowName}>{buildFullName(row)}</div>
-                <div className={styles.rowMeta}>{row.email || "-"}</div>
-                <div className={styles.rowStatus}>{row.review_status || "pending"}</div>
-              </button>
-            ))}
-            {!rows.length ? <p className={styles.emptyState}>No registrations yet.</p> : null}
-          </section>
+            {status.message ? <p className={`${styles.status} ${statusToneClass}`.trim()}>{status.message}</p> : null}
 
-          <section className={styles.detailPanel}>
-            {selectedRow ? (
-              <>
-                <h2 className={styles.detailTitle}>{buildFullName(selectedRow)}</h2>
-                <dl className={styles.detailList}>
-                  <div className={styles.detailRow}>
-                    <dt>Email</dt>
-                    <dd>{selectedRow.email || "-"}</dd>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <dt>Category</dt>
-                    <dd>{selectedRow.category || "-"}</dd>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <dt>City/Province</dt>
-                    <dd>{selectedRow.city_prov || "-"}</dd>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <dt>Status</dt>
-                    <dd>{selectedRow.review_status || "pending"}</dd>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <dt>Registered</dt>
-                    <dd>{formatDateTime(selectedRow.created_at)}</dd>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <dt>Payment Proof</dt>
-                    <dd>
-                      {selectedPaymentProofFiles.length ? (
-                        <div className={styles.proofPreviewList}>
-                          {selectedPaymentProofFiles.map((source, index) => (
-                            <button
-                              key={`${source}-${index}`}
-                              className={styles.proofPreviewButton}
-                              type="button"
-                              onClick={() => openProofModal(selectedPaymentProofFiles, index)}
-                            >
-                              {selectedPaymentProofFiles.length === 1 ? "View Payment Proof" : `View Proof ${index + 1}`}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        "None"
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-                <div className={styles.actionRow}>
-                  <button
-                    className={`${styles.actionButton} ${styles.acceptButton}`.trim()}
-                    type="button"
-                    onClick={() => handleReview("accept")}
-                    disabled={actionLoading !== ""}
-                  >
-                    {actionLoading === "accept" ? "Accepting..." : "Accept"}
-                  </button>
-                  <button
-                    className={`${styles.actionButton} ${styles.rejectButton}`.trim()}
-                    type="button"
-                    onClick={() => handleReview("reject")}
-                    disabled={actionLoading !== ""}
-                  >
-                    {actionLoading === "reject" ? "Rejecting..." : "Reject"}
-                  </button>
-                  <button
-                    className={`${styles.actionButton} ${styles.deleteButton}`.trim()}
-                    type="button"
-                    onClick={() => handleReview("delete")}
-                    disabled={actionLoading !== ""}
-                  >
-                    {actionLoading === "delete" ? "Deleting..." : "Delete"}
-                  </button>
+            {activeSection === SECTION_DASHBOARD ? (
+              <section className={styles.dashboardSection} aria-label="Admin dashboard summary">
+                <div className={styles.dashboardCards}>
+                  <article className={styles.dashboardCard}>
+                    <p className={styles.dashboardCardLabel}>Approved</p>
+                    <p className={styles.dashboardCardValue}>{dashboardStats.acceptedCount}</p>
+                  </article>
                 </div>
-              </>
+
+                <div className={styles.shirtSection}>
+                  <h2 className={styles.shirtSectionTitle}>Applicants by T-shirt Size</h2>
+                  <div className={styles.shirtGrid}>
+                    {SHIRT_SIZE_BUCKETS.map((sizeKey) => (
+                      <div key={sizeKey} className={styles.shirtItem}>
+                        <span className={styles.shirtSize}>{sizeKey}</span>
+                        <span className={styles.shirtCount}>{dashboardStats.sizeCounts[sizeKey] || 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
             ) : (
-              <p className={styles.emptyState}>Select a registration.</p>
+              <div className={styles.contentGrid}>
+                <section className={styles.listPanel}>
+                  {rows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => setSelectedId(row.id)}
+                      className={`${styles.rowButton} ${selectedId === row.id ? styles.rowButtonActive : ""}`.trim()}
+                    >
+                      <div className={styles.rowName}>{buildFullName(row)}</div>
+                      <div className={styles.rowMeta}>{row.email || "-"}</div>
+                      <div className={styles.rowStatus}>{row.review_status || "pending"}</div>
+                    </button>
+                  ))}
+                  {!rows.length ? <p className={styles.emptyState}>No registrations yet.</p> : null}
+                </section>
+
+                <section className={styles.detailPanel}>
+                  {selectedRow ? (
+                    <>
+                      <h2 className={styles.detailTitle}>{buildFullName(selectedRow)}</h2>
+                      <dl className={styles.detailList}>
+                        <div className={styles.detailRow}>
+                          <dt>Email</dt>
+                          <dd>{selectedRow.email || "-"}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>Phone</dt>
+                          <dd>{selectedRow.contact_no || "-"}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>Category</dt>
+                          <dd>{selectedRow.category || "-"}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>Shirt Size</dt>
+                          <dd>{selectedRow.shirt_size || "-"}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>City/Province</dt>
+                          <dd>{selectedRow.city_prov || "-"}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>Status</dt>
+                          <dd>{selectedRow.review_status || "pending"}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>Last Updated</dt>
+                          <dd>{formatDateTime(selectedRow.updated_at || selectedRow.created_at)}</dd>
+                        </div>
+                        <div className={styles.detailRow}>
+                          <dt>Payment Proof</dt>
+                          <dd>
+                            {hasSelectedProof ? (
+                              <div className={styles.proofPreviewList}>
+                                <button
+                                  className={styles.proofPreviewButton}
+                                  type="button"
+                                  onClick={handleViewPaymentProof}
+                                  disabled={paymentProofLoadingId === selectedRow.id}
+                                >
+                                  {paymentProofLoadingId === selectedRow.id
+                                    ? "Loading Proof..."
+                                    : selectedProofCount > 1
+                                      ? `View Payment Proofs (${selectedProofCount})`
+                                      : "View Payment Proof"}
+                                </button>
+                                {paymentProofNotice.clientId === selectedRow.id && paymentProofNotice.message ? (
+                                  <span
+                                    className={`${styles.proofNotice} ${
+                                      paymentProofNotice.tone === "error" ? styles.proofNoticeError : ""
+                                    }`.trim()}
+                                  >
+                                    {paymentProofNotice.message}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              "None"
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className={styles.actionRow}>
+                        <button
+                          className={`${styles.actionButton} ${styles.acceptButton}`.trim()}
+                          type="button"
+                          onClick={() => handleReview("accept")}
+                          disabled={actionLoading !== ""}
+                        >
+                          {actionLoading === "accept" ? "Accepting..." : "Accept"}
+                        </button>
+                        <button
+                          className={`${styles.actionButton} ${styles.rejectButton}`.trim()}
+                          type="button"
+                          onClick={() => handleReview("reject")}
+                          disabled={actionLoading !== ""}
+                        >
+                          {actionLoading === "reject" ? "Rejecting..." : "Reject"}
+                        </button>
+                        <button
+                          className={`${styles.actionButton} ${styles.deleteButton}`.trim()}
+                          type="button"
+                          onClick={() => handleReview("delete")}
+                          disabled={actionLoading !== ""}
+                        >
+                          {actionLoading === "delete" ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className={styles.emptyState}>Select a registration.</p>
+                  )}
+                </section>
+              </div>
             )}
-          </section>
+          </div>
         </div>
       </section>
       {proofModalSrc ? (
@@ -719,15 +1050,17 @@ export default function AdminLocalPortal() {
                 </button>
               </div>
             </div>
-            {isModalShowingPdf ? (
-              <iframe
-                className={styles.proofModalFrame}
-                src={proofModalSrc}
-                title="Payment proof PDF"
-              />
-            ) : (
-              <img className={styles.proofModalImage} src={proofModalSrc} alt="Payment proof" />
-            )}
+            <div className={styles.proofModalMedia}>
+              {isModalShowingPdf ? (
+                <iframe
+                  className={styles.proofModalFrame}
+                  src={proofModalSrc}
+                  title="Payment proof PDF"
+                />
+              ) : (
+                <img className={styles.proofModalImage} src={proofModalSrc} alt="Payment proof" />
+              )}
+            </div>
           </div>
         </div>
       ) : null}

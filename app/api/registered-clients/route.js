@@ -3,6 +3,11 @@ import { withTimeout } from "../../../lib/withTimeout";
 
 export const runtime = "nodejs";
 
+function getClientSortTime(createdAt) {
+  const parsed = createdAt ? Date.parse(createdAt) : NaN;
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
 function getRealtimeDatabaseUrl() {
   const direct = process.env.FIREBASE_DATABASE_URL;
   const publicUrl = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
@@ -57,6 +62,10 @@ function normalizeClients(rawValue) {
         (typeof item.full_name === "string" ? item.full_name.trim() : "") ||
         fullNameFromParts ||
         "Unknown";
+      const normalizedReviewStatus =
+        typeof item.review_status === "string" && item.review_status.trim()
+          ? item.review_status.trim().toLowerCase()
+          : "accepted";
       const createdAt =
         typeof item.created_at === "string"
           ? item.created_at
@@ -69,24 +78,41 @@ function normalizeClients(rawValue) {
         full_name: fullName,
         category: typeof item.category === "string" ? item.category : "15km",
         city_prov: typeof item.city_prov === "string" ? item.city_prov : "-",
-        review_status: typeof item.review_status === "string" ? item.review_status : "accepted",
+        review_status: normalizedReviewStatus,
         created_at: createdAt
       };
     })
     .filter(Boolean)
     .sort((a, b) => {
-      const aTime = a.created_at ? Date.parse(a.created_at) : 0;
-      const bTime = b.created_at ? Date.parse(b.created_at) : 0;
-      return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+      return getClientSortTime(a.created_at) - getClientSortTime(b.created_at);
     });
+}
+
+function mergeRegisteredAndPendingClients(publicClientsRaw, allClientsRaw) {
+  const publicClients = normalizeClients(publicClientsRaw);
+  const pendingClients = normalizeClients(allClientsRaw).filter((client) => client.review_status === "pending");
+  const clientsById = new Map(publicClients.map((client) => [client.id, client]));
+
+  pendingClients.forEach((client) => {
+    if (!clientsById.has(client.id)) {
+      clientsById.set(client.id, client);
+    }
+  });
+
+  return Array.from(clientsById.values()).sort((a, b) => {
+    return getClientSortTime(a.created_at) - getClientSortTime(b.created_at);
+  });
 }
 
 async function loadRegisteredClients() {
   try {
     const clients = await withTimeout(async () => {
       const db = getFirebaseDb();
-      const publicSnapshot = await db.ref("public_clients").get();
-      return normalizeClients(publicSnapshot.exists() ? publicSnapshot.val() : {});
+      const [publicSnapshot, allClientsSnapshot] = await Promise.all([db.ref("public_clients").get(), db.ref("clients").get()]);
+      return mergeRegisteredAndPendingClients(
+        publicSnapshot.exists() ? publicSnapshot.val() : {},
+        allClientsSnapshot.exists() ? allClientsSnapshot.val() : {}
+      );
     }, 4500, "Firebase Admin read");
     return clients;
   } catch {
@@ -96,7 +122,13 @@ async function loadRegisteredClients() {
     }
 
     const publicClients = await readWithRealtimeRest(baseUrl, "public_clients");
-    return normalizeClients(publicClients);
+    let allClients = {};
+    try {
+      allClients = await readWithRealtimeRest(baseUrl, "clients");
+    } catch {
+      allClients = {};
+    }
+    return mergeRegisteredAndPendingClients(publicClients, allClients);
   }
 }
 

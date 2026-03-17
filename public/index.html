@@ -80,7 +80,7 @@
 
   <section id="festival-countdown" class="countdown-section" aria-labelledby="countdown-heading">
     <div class="container countdown-shell">
-      <p class="countdown-kicker mb-2">Sabangan Highland Festival 2026</p>
+      <p class="countdown-kicker mb-2">SABANGAN GAGAYAM FESTIVAL 2026</p>
       <h2 id="countdown-heading" class="countdown-heading mb-4">Countdown to Opening Day</h2>
 
       <div class="countdown-track" data-countdown data-target-date="2026-03-22T00:00:00+08:00" aria-live="polite">
@@ -317,7 +317,7 @@
         <div class="register-left">
           <h2 id="register-heading" class="register-title">Reserve Your <span>Slot</span></h2>
           <p class="register-deadline">
-            Registration is open until <strong>March 22, 2026 only</strong>. Limited slots available to maintain trail conservation.
+            Registration will end on <strong>March 17, 2026</strong>. Limited slots available to maintain trail conservation.
           </p>
 
           <div class="register-promo">
@@ -385,6 +385,14 @@
         <div class="register-right">
           <div class="register-cta-card">
             <p class="register-cta-kicker">Online Registration</p>
+            <span
+              class="register-deadline-countdown"
+              data-registration-deadline-countdown
+              data-target-date="2026-03-17T23:59:59+08:00"
+              aria-live="polite"
+            >
+              Loading countdown...
+            </span>
             <h3 class="register-cta-title">Lock In Your Race Entry</h3>
             <p class="register-cta-copy">Click Register Now to open the registration form.</p>
             <div class="register-cta-actions">
@@ -394,7 +402,7 @@
             </div>
             <div class="register-shirt-inline">
               <p class="register-shirt-inline-label">Trail Run Shirt</p>
-              <img src="assets/images/shirt.png" class="register-shirt-inline-image" alt="Trail run shirt preview" loading="lazy" decoding="async" />
+              <img src="assets/images/shirt.png?v=20260314" class="register-shirt-inline-image" alt="Trail run shirt preview" loading="lazy" decoding="async" />
             </div>
             <button
               type="button"
@@ -505,9 +513,14 @@
         </div>
         <div class="modal-body">
           <div class="registered-clients-head">
-            <p class="registered-clients-status mb-0" data-registered-clients-status data-state="idle">
-              Opened. Loading registered clients...
-            </p>
+            <div class="registered-clients-meta">
+              <p class="registered-clients-status mb-0" data-registered-clients-status data-state="idle">
+                Opened. Loading registered clients...
+              </p>
+              <p class="registered-clients-note mb-0">
+                Pending registrations are listed here. Client acceptance is processed from 8:00 AM to 5:00 PM on working days.
+              </p>
+            </div>
             <button type="button" class="btn registered-clients-refresh" data-registered-clients-refresh>Refresh</button>
           </div>
 

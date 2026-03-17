@@ -81,8 +81,9 @@
   }
 
   const countdownEls = document.querySelectorAll('[data-countdown]');
+  const registrationDeadlineCountdownEl = document.querySelector('[data-registration-deadline-countdown]');
 
-  if (countdownEls.length) {
+  if (countdownEls.length || registrationDeadlineCountdownEl) {
     const pad = (value) => String(value).padStart(2, '0');
     const getServerTimeOffset = async () => {
       try {
@@ -149,6 +150,45 @@
         renderCountdown();
         countdownIntervalId = window.setInterval(renderCountdown, 1000);
       });
+
+      if (registrationDeadlineCountdownEl) {
+        const deadlineTarget = registrationDeadlineCountdownEl.getAttribute('data-target-date');
+        const deadlineTargetTime = deadlineTarget ? new Date(deadlineTarget).getTime() : NaN;
+
+        if (!Number.isFinite(deadlineTargetTime)) {
+          registrationDeadlineCountdownEl.textContent = 'Countdown unavailable.';
+          registrationDeadlineCountdownEl.setAttribute('data-state', 'error');
+          return;
+        }
+
+        let deadlineIntervalId = null;
+
+        const renderRegistrationDeadlineCountdown = () => {
+          const trustedNow = Date.now() + serverOffsetMs;
+          const remainingTime = deadlineTargetTime - trustedNow;
+
+          if (remainingTime <= 0) {
+            registrationDeadlineCountdownEl.textContent = 'Registration closed.';
+            registrationDeadlineCountdownEl.setAttribute('data-state', 'closed');
+            if (deadlineIntervalId) {
+              clearInterval(deadlineIntervalId);
+            }
+            return;
+          }
+
+          const days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+
+          registrationDeadlineCountdownEl.textContent =
+            `Time left: ${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+          registrationDeadlineCountdownEl.setAttribute('data-state', 'active');
+        };
+
+        renderRegistrationDeadlineCountdown();
+        deadlineIntervalId = window.setInterval(renderRegistrationDeadlineCountdown, 1000);
+      }
     });
   }
 
@@ -293,7 +333,7 @@
     if (!Array.isArray(clients) || !clients.length) {
       registeredClientsBodyEl.innerHTML = `
         <tr>
-          <td colspan="6" class="text-center py-4 text-muted">No registered clients yet.</td>
+          <td colspan="6" class="text-center py-4 text-muted">No accepted or pending clients yet.</td>
         </tr>
       `;
       return;
@@ -335,7 +375,7 @@
       }
 
       renderRegisteredClients(payload.clients);
-      setRegisteredClientsStatus(`Showing ${payload.count || 0} registered client(s).`, 'ready');
+      setRegisteredClientsStatus(`Showing ${payload.count || 0} accepted/pending client(s).`, 'ready');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load registered clients.';
       registeredClientsBodyEl.innerHTML = `

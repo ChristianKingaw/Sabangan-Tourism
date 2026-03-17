@@ -3,6 +3,7 @@ import path from "node:path";
 import Script from "next/script";
 import GagayamTrailLeafletMount from "../components/GagayamTrailLeafletMount";
 import RegistrationForm from "../components/RegistrationForm";
+import assetVersion from "../lib/assetVersion";
 
 const sourceHtmlPath = path.join(process.cwd(), "public", "index.html");
 const sourceHtml = fs.readFileSync(sourceHtmlPath, "utf8");
@@ -22,7 +23,7 @@ export default function HomePage() {
         crossOrigin="anonymous"
         strategy="afterInteractive"
       />
-      <Script src="/js/app.js" strategy="afterInteractive" />
+      <Script src={`/js/app.js?v=${assetVersion}`} strategy="afterInteractive" />
     </>
   );
 }

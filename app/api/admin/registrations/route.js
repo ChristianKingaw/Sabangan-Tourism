@@ -161,6 +161,7 @@ function normalizeAdminRows(rawClients, rawPayments) {
       const clientId = typeof client.id === "string" && client.id ? client.id : clientKey;
       const payment = paymentsByClientId.get(clientId) || null;
       const proofOfPaymentFiles = parseProofOfPaymentFiles(payment?.proof_of_payment);
+      const proofFileCount = proofOfPaymentFiles.length;
       return {
         id: clientId,
         email: typeof client.email === "string" ? client.email : "",
@@ -176,7 +177,7 @@ function normalizeAdminRows(rawClients, rawPayments) {
         zip_code: typeof client.zip_code === "string" ? client.zip_code : "",
         address: typeof client.address === "string" ? client.address : "",
         city_prov: typeof client.city_prov === "string" ? client.city_prov : "",
-        contact_no: typeof client.contact_no === "string" ? client.contact_no : "",
+        contact_no: client.contact_no == null ? "" : String(client.contact_no),
         health_condition: typeof client.health_condition === "string" ? client.health_condition : "",
         health_condition_details:
           typeof client.health_condition_details === "string" ? client.health_condition_details : "",
@@ -195,8 +196,8 @@ function normalizeAdminRows(rawClients, rawPayments) {
               id: typeof payment.id === "string" ? payment.id : "",
               payment_method: typeof payment.payment_method === "string" ? payment.payment_method : "",
               amount: typeof payment.amount === "number" ? payment.amount : Number(payment.amount || 0),
-              proof_of_payment: proofOfPaymentFiles[0] || "",
-              proof_of_payment_files: proofOfPaymentFiles,
+              has_proof_of_payment: proofFileCount > 0,
+              proof_file_count: proofFileCount,
               created_at: typeof payment.created_at === "string" ? payment.created_at : "",
               updated_at: typeof payment.updated_at === "string" ? payment.updated_at : ""
             }
@@ -205,9 +206,13 @@ function normalizeAdminRows(rawClients, rawPayments) {
     })
     .filter(Boolean)
     .sort((a, b) => {
-      const aTime = a.created_at ? Date.parse(a.created_at) : 0;
-      const bTime = b.created_at ? Date.parse(b.created_at) : 0;
-      return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+      const aTime = a.updated_at ? Date.parse(a.updated_at) : 0;
+      const bTime = b.updated_at ? Date.parse(b.updated_at) : 0;
+      const aFallback = a.created_at ? Date.parse(a.created_at) : 0;
+      const bFallback = b.created_at ? Date.parse(b.created_at) : 0;
+      const safeATime = Number.isFinite(aTime) && aTime > 0 ? aTime : (Number.isFinite(aFallback) ? aFallback : 0);
+      const safeBTime = Number.isFinite(bTime) && bTime > 0 ? bTime : (Number.isFinite(bFallback) ? bFallback : 0);
+      return safeBTime - safeATime;
     });
 }
 

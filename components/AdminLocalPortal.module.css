@@ -6,8 +6,7 @@
 }
 
 .loadingCard,
-.loginCard,
-.appCard {
+.loginCard {
   width: min(1080px, 100%);
   margin: 0 auto;
   border-radius: 16px;
@@ -27,6 +26,79 @@
 }
 
 .appCard {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.shellApp {
+  padding: 0;
+}
+
+.appLayout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 0;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-radius: 0;
+  border: 0;
+  border-right: 1px solid #d0e4d7;
+  background: #f8fffb;
+  padding: 1rem 0.72rem;
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
+.sidebarTitle {
+  margin: 0 0 0.2rem;
+  color: #2f5a46;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+}
+
+.sidebarButton {
+  width: 100%;
+  min-height: 2.35rem;
+  border-radius: 10px;
+  border: 1px solid #cde2d5;
+  background: #ffffff;
+  color: #0f5939;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.45rem 0.62rem;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.sidebarButton:hover {
+  border-color: #0f8e5d;
+  box-shadow: 0 8px 18px rgba(16, 90, 58, 0.12);
+}
+
+.sidebarButtonActive {
+  border-color: #0f8e5d;
+  background: #e8fff3;
+  box-shadow: 0 0 0 1px rgba(15, 142, 93, 0.25);
+}
+
+.mainPanel {
+  min-width: 0;
   padding: 1.1rem;
 }
 
@@ -61,12 +133,6 @@
 }
 
 .headerActions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.acceptModeButtons {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -125,12 +191,6 @@
   color: #0f5939;
 }
 
-.modeButtonActive {
-  border-color: #0f8e5d;
-  background: #e6f7ef;
-  color: #0a6d46;
-}
-
 .actionButton {
   min-height: 2.3rem;
   padding: 0.5rem 0.84rem;
@@ -184,6 +244,259 @@
   border: 1px solid #b7e3ca;
 }
 
+.dashboardSection {
+  margin-top: 0.85rem;
+  margin-bottom: 0.95rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dashboardCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+.dashboardCard {
+  border-radius: 12px;
+  border: 1px solid #cde2d5;
+  background: linear-gradient(145deg, #ffffff, #f6fff9);
+  padding: 0.62rem 0.68rem;
+}
+
+.dashboardCardLabel {
+  margin: 0;
+  color: #2f5a46;
+  font-size: 0.77rem;
+  font-weight: 700;
+  letter-spacing: 0.02rem;
+}
+
+.dashboardCardValue {
+  margin: 0.3rem 0 0;
+  color: #0a3f27;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  font-weight: 800;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.dashboardPanel {
+  border-radius: 12px;
+  border: 1px solid #cde2d5;
+  background: #f8fffb;
+  padding: 0.7rem;
+}
+
+.dashboardPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.dashboardPanelTitle {
+  margin: 0;
+  color: #0f5939;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.dashboardPanelHint {
+  margin: 0;
+  color: #4d6e5d;
+  font-size: 0.76rem;
+  text-align: right;
+}
+
+.statusMeterList {
+  display: grid;
+  gap: 0.48rem;
+}
+
+.statusMeterRow {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.statusMeterMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  align-items: baseline;
+}
+
+.statusMeterLabel {
+  color: #234e3b;
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.statusMeterValue {
+  color: #355f4b;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.statusMeterTrack {
+  width: 100%;
+  height: 0.56rem;
+  border-radius: 999px;
+  background: #deecdf;
+  overflow: hidden;
+}
+
+.statusMeterFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.trendChart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.45rem;
+  align-items: end;
+}
+
+.trendColumn {
+  display: grid;
+  gap: 0.26rem;
+  justify-items: center;
+}
+
+.trendValue {
+  color: #1f4f39;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.trendTrack {
+  width: 100%;
+  max-width: 30px;
+  height: 86px;
+  border-radius: 10px;
+  border: 1px solid #d4e7d9;
+  background: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.trendFill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  background: linear-gradient(180deg, #37b17c 0%, #0f8e5d 100%);
+}
+
+.trendLabel {
+  color: #3c6653;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.rankList {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rankRow {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.rankMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  align-items: baseline;
+}
+
+.rankLabel {
+  color: #214f39;
+  font-size: 0.79rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.rankValue {
+  color: #3c6653;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.rankTrack {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #deecdf;
+  overflow: hidden;
+}
+
+.rankFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #65ba8e 0%, #0f8e5d 100%);
+}
+
+.panelEmpty {
+  margin: 0.15rem 0 0;
+  color: #4a6a5b;
+  font-size: 0.82rem;
+}
+
+.shirtSection {
+  border-radius: 12px;
+  border: 1px solid #cde2d5;
+  background: #f8fffb;
+  padding: 0.62rem 0.68rem;
+}
+
+.shirtSectionTitle {
+  margin: 0;
+  color: #0f5939;
+  font-size: 0.89rem;
+  font-weight: 800;
+}
+
+.shirtGrid {
+  margin-top: 0.55rem;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.shirtItem {
+  border-radius: 10px;
+  border: 1px solid #d2e6d9;
+  background: #ffffff;
+  padding: 0.4rem 0.45rem;
+  display: grid;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.shirtSize {
+  color: #2f5a46;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03rem;
+}
+
+.shirtCount {
+  color: #0a3f27;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
 .contentGrid {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
@@ -235,6 +548,13 @@
   margin-top: 0.15rem;
   color: #355f4b;
   font-size: 0.82rem;
+}
+
+.rowShirt {
+  margin-top: 0.18rem;
+  color: #2f5a46;
+  font-size: 0.79rem;
+  font-weight: 700;
 }
 
 .rowStatus {
@@ -299,6 +619,18 @@
   gap: 0.35rem;
 }
 
+.proofNotice {
+  display: inline-flex;
+  align-items: center;
+  color: #3c6653;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.proofNoticeError {
+  color: #8a2c2c;
+}
+
 .proofModalBackdrop {
   position: fixed;
   inset: 0;
@@ -311,8 +643,7 @@
 
 .proofModal {
   position: relative;
-  width: min(92vw, 760px);
-  height: min(86vh, 680px);
+  width: min(94vw, 560px);
   border-radius: 12px;
   border: 1px solid #b8dcca;
   background: #f6fff9;
@@ -372,6 +703,7 @@
   height: 100%;
   display: block;
   object-fit: contain;
+  object-position: center;
   background: #edf8f1;
 }
 
@@ -380,6 +712,15 @@
   height: 100%;
   border: 0;
   background: #ffffff;
+}
+
+.proofModalMedia {
+  width: min(500px, calc(94vw - 2rem));
+  height: min(500px, calc(90vh - 8rem));
+  max-height: 500px;
+  justify-self: center;
+  align-self: center;
+  background: #edf8f1;
 }
 
 .actionRow {
@@ -395,7 +736,59 @@
   font-size: 0.9rem;
 }
 
+@media (max-width: 1280px) {
+  .dashboardCards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
+  .appLayout {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .sidebar {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(140px, auto);
+    align-items: center;
+    align-content: center;
+    overflow-x: auto;
+    min-height: auto;
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid #d0e4d7;
+  }
+
+  .sidebarTitle {
+    margin: 0;
+    min-width: max-content;
+  }
+
+  .sidebarButton {
+    white-space: nowrap;
+  }
+
+  .dashboardCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardPanelHeader {
+    flex-direction: column;
+  }
+
+  .dashboardPanelHint {
+    text-align: left;
+  }
+
+  .shirtGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .contentGrid {
     grid-template-columns: 1fr;
   }
@@ -411,8 +804,12 @@
   }
 
   .proofModal {
-    width: min(94vw, 620px);
-    height: min(84vh, 600px);
+    width: min(96vw, 560px);
+  }
+
+  .proofModalMedia {
+    width: min(500px, calc(96vw - 2rem));
+    height: min(500px, calc(88vh - 10rem));
   }
 
   .proofModalToolbar {
@@ -423,5 +820,20 @@
   .proofModalActions {
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboardCards {
+    grid-template-columns: 1fr;
+  }
+
+  .trendTrack {
+    max-width: 22px;
+    height: 72px;
+  }
+
+  .shirtGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

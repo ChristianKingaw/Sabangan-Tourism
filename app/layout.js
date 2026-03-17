@@ -1,4 +1,5 @@
 import "./globals.css";
+import assetVersion from "../lib/assetVersion";
 
 export const metadata = {
   title: "Sabangan LGU Events",
@@ -31,7 +32,7 @@ export default function RootLayout({ children }) {
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossOrigin=""
         />
-        <link rel="stylesheet" href="/css/styles.css" />
+        <link rel="stylesheet" href={`/css/styles.css?v=${assetVersion}`} />
       </head>
       <body>{children}</body>
     </html>

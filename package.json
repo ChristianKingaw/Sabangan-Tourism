@@ -29,6 +29,7 @@
     "nodemailer": "^8.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "jspdf": "^2.5.2",
     "use-postal-ph": "^1.1.13"
   },
   "devDependencies": {
